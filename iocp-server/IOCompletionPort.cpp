@@ -200,7 +200,7 @@ void IOCompletionPort::WorkerThread()
 		 */
 		bResult = GetQueuedCompletionStatus(m_hIOCP,
 			&recvBytes,				// 실제로 전송된 바이트
-			(LPDWORD)&pCompletionKey,	// completion key
+			(PULONG_PTR)&pCompletionKey,	// completion key
 			(LPOVERLAPPED *)&pSocketInfo,			// overlapped I/O 객체
 			INFINITE				// 대기할 시간
 		);
