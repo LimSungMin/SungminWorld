@@ -21,6 +21,13 @@ struct stSOCKETINFO
 	int				sendBytes;
 };
 
+struct location
+{
+	float x;
+	float y;
+	float z;
+};
+
 /**
  * 
  */
@@ -32,7 +39,7 @@ public:
 
 	bool InitSocket();
 	bool Connect(const char * pszIP, int nPort);
-	void SendMyLocation();
+	void SendMyLocation(const FVector& ActorLocation);
 
 private:
 	SOCKET m_Socket;

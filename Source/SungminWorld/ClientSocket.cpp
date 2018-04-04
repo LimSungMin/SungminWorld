@@ -52,22 +52,28 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
-void ClientSocket::SendMyLocation()
+void ClientSocket::SendMyLocation(const FVector& ActorLocation)
 {
-// 	char		szOutMsg[1024];
-// 	location loc;
-// 	strcpy_s(szOutMsg, "req_location");
-// 
-// 	int nSendLen = send(socket_, szOutMsg, strlen(szOutMsg), 0);
-// 
-// 	if (nSendLen == -1) {
-// 		std::cout << "Error : " << WSAGetLastError() << std::endl;
-// 		return FVector();
-// 	}
-// 
-// 	int nRecvLen = recv(socket_, (char*)&loc, 1024, 0);
-// 
-// 	FVector result(loc.x, loc.y, loc.z);
-// 
-// 	return result;
+	location loc;
+	loc.x = ActorLocation.X;
+	loc.y = ActorLocation.Y;
+	loc.z = ActorLocation.Z;
+
+	// char		szOutMsg[1024];
+		
+	// sprintf_s(szOutMsg, "X : %f, Y : %f, Z : %f\n", ActorLocation.X, ActorLocation.Y, ActorLocation.Z);
+
+	// int nSendLen = send(m_Socket, szOutMsg, strlen(szOutMsg), 0);	
+	int nSendLen = send(m_Socket, (CHAR*)&loc, sizeof(location), 0);
+
+	if (nSendLen == -1) {
+		// std::cout << "Error : " << WSAGetLastError() << std::endl;
+		// return FVector();
+	}
+
+	// int nRecvLen = recv(socket_, (char*)&loc, 1024, 0);
+
+	// FVector result(loc.x, loc.y, loc.z);
+
+	// return result;
 }

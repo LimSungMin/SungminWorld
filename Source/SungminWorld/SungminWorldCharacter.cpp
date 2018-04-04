@@ -45,6 +45,14 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+	
+	// 서버와 연결
+	Socket.InitSocket();
+	bIsConnected = Socket.Connect("127.0.0.1", 8000);
+	if (bIsConnected)
+	{				
+		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -90,6 +98,19 @@ void ASungminWorldCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector
 void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
 		StopJumping();
+}
+
+void ASungminWorldCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// UE_LOG(LogClass, Log, TEXT("asd"));
+	if (bIsConnected)
+	{
+		auto MyLocation = GetActorLocation();
+		// UE_LOG(LogClass, Log, TEXT("%s %s %s"), MyLocation.X, MyLocation.Y, MyLocation.ZeroVector);
+		Socket.SendMyLocation(MyLocation);
+	}
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)
