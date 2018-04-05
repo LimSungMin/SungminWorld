@@ -10,7 +10,7 @@
 
 using namespace std;
 
-#define	MAX_BUFFER		1024
+#define	MAX_BUFFER		4096
 #define SERVER_PORT		8000
 #define SERVER_IP		"127.0.0.1"
 
@@ -53,9 +53,9 @@ public:
 
 	bool InitSocket();
 	bool Connect(const char * pszIP, int nPort);
-	int SendMyLocation(const int& SessionId, const FVector& ActorLocation);
+	CharactersInfo* SendMyLocation(const int& SessionId, const FVector& ActorLocation);
 
 private:
 	SOCKET	m_Socket;
-	char *	recvBuffer;
+	char 	recvBuffer[MAX_BUFFER];
 };

@@ -11,6 +11,7 @@
 #include "OtherNetworkCharacter.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include <string>
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -51,7 +52,8 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	
 	// 세션 아이디 지정 (지금은 랜덤값)
 	SessionId = FMath::Rand();	
-	
+	bIsSpawned = false;
+
 	// 서버와 연결
 	Socket.InitSocket();
 	bIsConnected = Socket.Connect("127.0.0.1", 8000);
@@ -111,23 +113,23 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	if (bIsConnected)
-	{
-		auto MyLocation = GetActorLocation();		
-		auto ci = Socket.SendMyLocation(SessionId, MyLocation);
-
-		UE_LOG(LogClass, Log, TEXT("My session id : %d"), ci);
+	{		
+		auto MyLocation = GetActorLocation();				
+		auto ci = Socket.SendMyLocation(SessionId, MyLocation);				
+	
+		UE_LOG(LogClass, Log, TEXT("array size : %d"), sizeof(struct CharactersInfo));
 
 		TArray<AActor*> SpawnedCharacters;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
 
 		auto DummyLocation = MyLocation;
 		DummyLocation.X += 100;
-		DummyLocation.Y += 100;
+		DummyLocation.Y += 100;		
 
 		for (auto Item : SpawnedCharacters)
 		{
 			auto Character = Cast<AOtherNetworkCharacter>(Item);
-			Character->SetActorLocation(DummyLocation);			
+			Character->SetActorLocation(DummyLocation);						
 		}
 	}	
 	
@@ -136,6 +138,14 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 void ASungminWorldCharacter::BeginPlay()
 {
 	Super::BeginPlay();	
+
+	FVector t;
+	t.X = 69;
+	t.Y = 0;
+	t.Z = 0;
+	// auto ci = Socket.SendMyLocation(99999, t);
+
+	// UE_LOG(LogClass, Log, TEXT("XXXXXXX : %f"), ci->m[99999].x);
 
 	UWorld* const world = GetWorld();
 

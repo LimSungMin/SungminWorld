@@ -3,12 +3,12 @@
 #pragma comment(lib, "ws2_32.lib")
 #include <WinSock2.h>
 #include <map>
-
+#include <iostream>
 #include "custom_struct.h"
 
 using namespace std;
 
-#define	MAX_BUFFER		1024
+#define	MAX_BUFFER		4096
 #define SERVER_PORT		8000
 
 struct stSOCKETINFO
@@ -44,5 +44,5 @@ private:
 	bool			bAccept;			// 요청 동작 플래그
 	bool			bWorkerThread;	// 작업 스레드 동작 플래그
 	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들	
-	CharactersInfo	 WorldCharacterInfo; // 접속한 클라이언트의 정보를 저장
+	map<int, location>  WorldCharacterInfo; // 접속한 클라이언트의 정보를 저장
 };

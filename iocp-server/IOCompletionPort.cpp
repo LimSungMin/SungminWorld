@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "IOCompletionPort.h"
 #include <process.h>
+#include <sstream>
+#include <boost/serialization/map.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 unsigned int WINAPI CallWorkerThread(LPVOID p)
 {
@@ -12,7 +16,7 @@ unsigned int WINAPI CallWorkerThread(LPVOID p)
 IOCompletionPort::IOCompletionPort()
 {
 	bWorkerThread = true;
-	bAccept = true;
+	bAccept = true;	
 }
 
 
@@ -62,7 +66,8 @@ bool IOCompletionPort::Initialize()
 	serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
 
 	// 소켓 설정
-	nResult = bind(ListenSocket, (struct sockaddr*)&serverAddr, sizeof(SOCKADDR_IN));
+	// boost bind 와 구별짓기 위해 ::bind 사용
+	nResult = ::bind(ListenSocket, (struct sockaddr*)&serverAddr, sizeof(SOCKADDR_IN));
 	if (nResult == SOCKET_ERROR)
 	{
 		printf_s("[ERROR] bind 실패\n");
@@ -228,10 +233,19 @@ void IOCompletionPort::WorkerThread()
  			printf_s("[INFO] [%d]위치 수신 - X : [%f], Y : [%f], Z : [%f]\n",
  				info->SessionId, info->loc.x, info->loc.y, info->loc.z);
 
-			// 캐릭터의 위치를 저장
-			WorldCharacterInfo.m[info->SessionId] = info->loc;			
+			// 캐릭터의 위치를 저장			
+			WorldCharacterInfo[info->SessionId] = info->loc;			
+
+			stringstream ss;
+			boost::archive::text_oarchive oarch(ss);
+			oarch << WorldCharacterInfo;
+						
+			CopyMemory(pSocketInfo->messageBuffer, (CHAR*)&oarch, sizeof(struct CharactersInfo));
+			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
+			pSocketInfo->dataBuf.len = sizeof(struct CharactersInfo);			
 			
-			pSocketInfo->dataBuf.buf = (CHAR*)&WorldCharacterInfo;
+// 			pSocketInfo->dataBuf.buf = (CHAR*)&WorldCharacterInfo;
+// 			pSocketInfo->dataBuf.len = sizeof(struct CharacterInfo);
 
 			// 다른 클라이언트의 정보를 송신
 			nResult = WSASend(
@@ -254,9 +268,9 @@ void IOCompletionPort::WorkerThread()
 
 			// stSOCKETINFO 데이터 초기화
 			ZeroMemory(&(pSocketInfo->overlapped), sizeof(OVERLAPPED));
+			ZeroMemory(pSocketInfo->messageBuffer, MAX_BUFFER);
 			pSocketInfo->dataBuf.len = MAX_BUFFER;
-			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
- 			ZeroMemory(pSocketInfo->messageBuffer, MAX_BUFFER);			
+			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer; 			
  			pSocketInfo->recvBytes = 0;
  			pSocketInfo->sendBytes = 0;
  			

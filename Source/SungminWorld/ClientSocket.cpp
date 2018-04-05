@@ -1,6 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ClientSocket.h"
+#include <sstream>
+// #include <boost/serialization/map.hpp>
+// #include <boost/archive/text_iarchive.hpp>
+// #include <boost/archive/text_oarchive.hpp>
+
 
 ClientSocket::ClientSocket()
 {
@@ -8,6 +13,8 @@ ClientSocket::ClientSocket()
 
 ClientSocket::~ClientSocket()
 {
+	closesocket(m_Socket);
+	WSACleanup();
 }
 
 bool ClientSocket::InitSocket()
@@ -21,7 +28,8 @@ bool ClientSocket::InitSocket()
 	}
 
 	// TCP 家南 积己
-	m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	// m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	m_Socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (m_Socket == INVALID_SOCKET) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
@@ -41,7 +49,7 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	stServerAddr.sin_port = htons(nPort);
 	stServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 
-	int nRet = connect(m_Socket, (sockaddr*)&stServerAddr, sizeof(sockaddr));
+	int nRet = connect(m_Socket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
 	if (nRet == SOCKET_ERROR) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
@@ -52,7 +60,7 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
-int ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocation)
+CharactersInfo* ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocation)
 {
 	location loc;
 	loc.x = ActorLocation.X;
@@ -64,23 +72,32 @@ int ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocat
 	info.loc = loc;
 
 	CharactersInfo* ci;
-	
-	int nSendLen = send(m_Socket, (CHAR*)&info, sizeof(CharacterInfo), 0);
-	
+// 	DWORD sendBytes;
+// 	DWORD dwFlag = 0;	
+// 	
+// 	m_SocketInfo->dataBuf.buf = (CHAR*)&info;
+// 	m_SocketInfo->dataBuf.len = sizeof(CharacterInfo);
+// 
+// 	int nSendLen = WSASend(
+// 		m_Socket, &(m_SocketInfo->dataBuf), 1, &sendBytes, dwFlag, NULL, NULL
+// 	);
+
+	int nSendLen = send(m_Socket, (CHAR*)&info, sizeof(CharacterInfo), 0);	
+		
 	if (nSendLen == -1)
 	{
-		return -1;
+		return nullptr;
 	}
-	
-	int nRecvLen = recv(m_Socket, (CHAR*)&recvBuffer, 1024, 0);
+		
+	int nRecvLen = recv(m_Socket, (CHAR*)&recvBuffer, MAX_BUFFER, 0);
 
 	if (nRecvLen == -1)
 	{
-		return -1;
+		return nullptr;
 	}
-	else {
+	else {		
 		ci = (CharactersInfo*)&recvBuffer;
-	}		
-	return ci->m.size();
-		
+	}			
+	ci->m.at(0);
+	return ci;
 }
