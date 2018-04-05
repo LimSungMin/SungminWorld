@@ -49,6 +49,9 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 	
+	// 세션 아이디 지정 (지금은 랜덤값)
+	SessionId = FMath::Rand();	
+	
 	// 서버와 연결
 	Socket.InitSocket();
 	bIsConnected = Socket.Connect("127.0.0.1", 8000);
@@ -106,13 +109,13 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 void ASungminWorldCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	// UE_LOG(LogClass, Log, TEXT("asd"));
+	
 	if (bIsConnected)
 	{
-		auto MyLocation = GetActorLocation();
-		// UE_LOG(LogClass, Log, TEXT("%s %s %s"), MyLocation.X, MyLocation.Y, MyLocation.ZeroVector);
-		Socket.SendMyLocation(MyLocation);
+		auto MyLocation = GetActorLocation();		
+		auto ci = Socket.SendMyLocation(SessionId, MyLocation);
+
+		UE_LOG(LogClass, Log, TEXT("My session id : %d"), ci);
 
 		TArray<AActor*> SpawnedCharacters;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
@@ -124,7 +127,7 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 		for (auto Item : SpawnedCharacters)
 		{
 			auto Character = Cast<AOtherNetworkCharacter>(Item);
-			Character->SetActorLocation(DummyLocation);
+			Character->SetActorLocation(DummyLocation);			
 		}
 	}	
 	
@@ -132,7 +135,7 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 
 void ASungminWorldCharacter::BeginPlay()
 {
-	Super::BeginPlay();
+	Super::BeginPlay();	
 
 	UWorld* const world = GetWorld();
 
