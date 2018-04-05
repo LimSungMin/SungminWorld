@@ -61,10 +61,16 @@ protected:
 	
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void BeginPlay() override;
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
+
+	// 스폰시킬 다른 캐릭터
+	UPROPERTY(EditAnywhere, Category = "Spawning")
+	TSubclassOf<class ACharacter> WhoToSpawn;
 
 public:
 	/** Returns CameraBoom subobject **/
@@ -74,5 +80,6 @@ public:
 private:
 	ClientSocket Socket;
 	bool bIsConnected;
+
 };
 

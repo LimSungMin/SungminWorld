@@ -226,8 +226,6 @@ void IOCompletionPort::WorkerThread()
 		{
 			location loc = *(location*)pSocketInfo->dataBuf.buf;
 			
-// 			printf_s("[INFO] 메시지 수신- Bytes : [%d], Msg : [%s]\n",
-// 				pSocketInfo->dataBuf.len, pSocketInfo->dataBuf.buf);
  			printf_s("[INFO] 위치 수신 - X : [%f], Y : [%f], Z : [%f]\n",
  				loc.x, loc.y, loc.z);
 

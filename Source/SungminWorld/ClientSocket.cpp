@@ -58,12 +58,7 @@ void ClientSocket::SendMyLocation(const FVector& ActorLocation)
 	loc.x = ActorLocation.X;
 	loc.y = ActorLocation.Y;
 	loc.z = ActorLocation.Z;
-
-	// char		szOutMsg[1024];
-		
-	// sprintf_s(szOutMsg, "X : %f, Y : %f, Z : %f\n", ActorLocation.X, ActorLocation.Y, ActorLocation.Z);
-
-	// int nSendLen = send(m_Socket, szOutMsg, strlen(szOutMsg), 0);	
+	
 	int nSendLen = send(m_Socket, (CHAR*)&loc, sizeof(location), 0);
 
 	if (nSendLen == -1) {

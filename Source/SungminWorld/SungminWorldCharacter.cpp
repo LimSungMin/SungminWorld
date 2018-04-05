@@ -8,6 +8,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "OtherNetworkCharacter.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -110,7 +113,45 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 		auto MyLocation = GetActorLocation();
 		// UE_LOG(LogClass, Log, TEXT("%s %s %s"), MyLocation.X, MyLocation.Y, MyLocation.ZeroVector);
 		Socket.SendMyLocation(MyLocation);
-	}
+
+		TArray<AActor*> SpawnedCharacters;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
+
+		auto DummyLocation = MyLocation;
+		DummyLocation.X += 100;
+		DummyLocation.Y += 100;
+
+		for (auto Item : SpawnedCharacters)
+		{
+			auto Character = Cast<AOtherNetworkCharacter>(Item);
+			Character->SetActorLocation(DummyLocation);
+		}
+	}	
+	
+}
+
+void ASungminWorldCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UWorld* const world = GetWorld();
+
+	if (world)
+	{
+		FVector SpawnLocation;
+		SpawnLocation.X = -709;
+		SpawnLocation.Y = -14;
+		SpawnLocation.Z = 230;
+
+		FRotator SpawnRotation(0.f, 0.f, 0.f);
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = Instigator;
+		SpawnParams.Name = "Dummy1";
+
+		ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);		
+	}	
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)
