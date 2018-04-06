@@ -81,7 +81,7 @@ private:
 	ClientSocket	Socket;			// 서버와 접속할 소켓
 	bool			bIsConnected;	// 서버와 접속 유무
 	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)
-	map<int, location> OtherCharacterInfo;
+	// map<int, location> OtherCharacterInfo;
 	bool			bIsSpawned;
 };
 

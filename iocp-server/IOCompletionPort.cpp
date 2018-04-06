@@ -16,7 +16,16 @@ unsigned int WINAPI CallWorkerThread(LPVOID p)
 IOCompletionPort::IOCompletionPort()
 {
 	bWorkerThread = true;
-	bAccept = true;	
+	bAccept = true;		
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		// WorldCharacterInfo[i].sessionId = -1;		
+		CharactersInfo.WorldCharacterInfo[i].SessionId = -1;
+		CharactersInfo.WorldCharacterInfo[i].X = -1;
+		CharactersInfo.WorldCharacterInfo[i].Y= -1;
+		CharactersInfo.WorldCharacterInfo[i].Z= -1;
+	}
 }
 
 
@@ -228,24 +237,25 @@ void IOCompletionPort::WorkerThread()
 		}
 		else
 		{			
-			CharacterInfo* info = (CharacterInfo*)pSocketInfo->dataBuf.buf;
+			cLocation* info = (cLocation*)pSocketInfo->dataBuf.buf;
 			
  			printf_s("[INFO] [%d]위치 수신 - X : [%f], Y : [%f], Z : [%f]\n",
- 				info->SessionId, info->loc.x, info->loc.y, info->loc.z);
+ 				info->SessionId, info->X, info->Y, info->Z);
 
-			// 캐릭터의 위치를 저장			
-			WorldCharacterInfo[info->SessionId] = info->loc;			
+			// 캐릭터의 위치를 저장						
+			CharactersInfo.WorldCharacterInfo[info->SessionId].SessionId = info->SessionId;
+			CharactersInfo.WorldCharacterInfo[info->SessionId].X = info->X;
+			CharactersInfo.WorldCharacterInfo[info->SessionId].Y = info->Y;
+			CharactersInfo.WorldCharacterInfo[info->SessionId].Z = info->Z;
 
-			stringstream ss;
-			boost::archive::text_oarchive oarch(ss);
-			oarch << WorldCharacterInfo;
-						
-			CopyMemory(pSocketInfo->messageBuffer, (CHAR*)&oarch, sizeof(struct CharactersInfo));
-			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
-			pSocketInfo->dataBuf.len = sizeof(struct CharactersInfo);			
+			// 직렬화
+			stringstream InputStream;
+			InputStream << CharactersInfo;			
 			
-// 			pSocketInfo->dataBuf.buf = (CHAR*)&WorldCharacterInfo;
-// 			pSocketInfo->dataBuf.len = sizeof(struct CharacterInfo);
+			// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음
+			CopyMemory(pSocketInfo->messageBuffer, (CHAR*)InputStream.str().c_str(), InputStream.str().length());
+			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
+			pSocketInfo->dataBuf.len = InputStream.str().length();			
 
 			// 다른 클라이언트의 정보를 송신
 			nResult = WSASend(

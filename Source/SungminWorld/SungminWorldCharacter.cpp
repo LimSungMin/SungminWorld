@@ -51,7 +51,7 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 	
 	// 세션 아이디 지정 (지금은 랜덤값)
-	SessionId = FMath::Rand();	
+	SessionId = FMath::RandRange(0, 100);
 	bIsSpawned = false;
 
 	// 서버와 연결
@@ -115,9 +115,9 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 	if (bIsConnected)
 	{		
 		auto MyLocation = GetActorLocation();				
-		auto ci = Socket.SendMyLocation(SessionId, MyLocation);				
-	
-		UE_LOG(LogClass, Log, TEXT("array size : %d"), sizeof(struct CharactersInfo));
+		int ci = Socket.SendMyLocation(SessionId, MyLocation);						
+		
+		UE_LOG(LogClass, Log, TEXT("asdasd : %d"), ci);
 
 		TArray<AActor*> SpawnedCharacters;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);

@@ -2,10 +2,6 @@
 
 #include "ClientSocket.h"
 #include <sstream>
-// #include <boost/serialization/map.hpp>
-// #include <boost/archive/text_iarchive.hpp>
-// #include <boost/archive/text_oarchive.hpp>
-
 
 ClientSocket::ClientSocket()
 {
@@ -60,44 +56,44 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
-CharactersInfo* ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocation)
+int ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocation)
 {
-	location loc;
-	loc.x = ActorLocation.X;
-	loc.y = ActorLocation.Y;
-	loc.z = ActorLocation.Z;
+	// 위치정보 저장
+	cLocation loc;
+	loc.SessionId = SessionId;
+	loc.X = ActorLocation.X;
+	loc.Y = ActorLocation.Y;
+	loc.Z = ActorLocation.Z;
 
-	CharacterInfo info;
-	info.SessionId = SessionId;
-	info.loc = loc;
-
-	CharactersInfo* ci;
-// 	DWORD sendBytes;
-// 	DWORD dwFlag = 0;	
-// 	
-// 	m_SocketInfo->dataBuf.buf = (CHAR*)&info;
-// 	m_SocketInfo->dataBuf.len = sizeof(CharacterInfo);
-// 
-// 	int nSendLen = WSASend(
-// 		m_Socket, &(m_SocketInfo->dataBuf), 1, &sendBytes, dwFlag, NULL, NULL
-// 	);
-
-	int nSendLen = send(m_Socket, (CHAR*)&info, sizeof(CharacterInfo), 0);	
+	// 위치정보 전송
+	int nSendLen = send(m_Socket, (CHAR*)&loc, sizeof(cLocation), 0);
 		
 	if (nSendLen == -1)
 	{
-		return nullptr;
+		return -1;
 	}
 		
+	// 서버응답 수신
 	int nRecvLen = recv(m_Socket, (CHAR*)&recvBuffer, MAX_BUFFER, 0);
 
 	if (nRecvLen == -1)
 	{
-		return nullptr;
+		return -1;
 	}
 	else {		
-		ci = (CharactersInfo*)&recvBuffer;
+		// 역직렬화
+		stringstream OutputStream;
+		OutputStream << recvBuffer;
+		OutputStream >> CharactersInfo;
+
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{
+			int ssId = CharactersInfo.WorldCharacterInfo[i].SessionId;
+			if (ssId != -1)
+			{
+				return CharactersInfo.WorldCharacterInfo[i].X;
+			}
+		}
+		return -1;
 	}			
-	ci->m.at(0);
-	return ci;
 }

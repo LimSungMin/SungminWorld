@@ -4,12 +4,13 @@
 #include <WinSock2.h>
 #include <map>
 #include <iostream>
-#include "custom_struct.h"
+// #include "custom_struct.h"
 
 using namespace std;
 
 #define	MAX_BUFFER		4096
 #define SERVER_PORT		8000
+#define MAX_CLIENTS		100
 
 struct stSOCKETINFO
 {
@@ -21,6 +22,63 @@ struct stSOCKETINFO
 	int				sendBytes;
 };
 
+class cLocation {
+public:
+	cLocation() {};
+	~cLocation() {};
+
+	int SessionId;
+	float X;
+	float Y;
+	float Z;
+
+	friend ostream& operator<<(ostream &stream, cLocation& loc)
+	{
+		stream << loc.SessionId << endl;
+		stream << loc.X << endl;
+		stream << loc.Y<< endl;
+		stream << loc.Z<< endl;
+
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, cLocation& loc)
+	{
+		stream >> loc.SessionId;
+		stream >> loc.X;
+		stream >> loc.Y;
+		stream >> loc.Z;
+
+		return stream;
+	}
+};
+
+class cCharactersInfo
+{
+public:
+	cCharactersInfo() {};
+	~cCharactersInfo() {};
+
+	cLocation WorldCharacterInfo[MAX_CLIENTS];
+
+	friend ostream& operator<<(ostream &stream, cCharactersInfo& info)
+	{
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{
+			stream << info.WorldCharacterInfo[i] << endl;			
+		}
+		return stream;
+	}
+
+	friend istream &operator>>(istream &stream, cCharactersInfo& info)
+	{
+		for (int i = 0; i < MAX_CLIENTS; i++)
+		{												
+			stream >> info.WorldCharacterInfo[i];
+		}
+		return stream;
+	}
+};
 
 class IOCompletionPort
 {
@@ -44,5 +102,6 @@ private:
 	bool			bAccept;			// 요청 동작 플래그
 	bool			bWorkerThread;	// 작업 스레드 동작 플래그
 	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들	
-	map<int, location>  WorldCharacterInfo; // 접속한 클라이언트의 정보를 저장
+	// location		WorldCharacterInfo[MAX_CLIENTS]; // 접속한 클라이언트의 정보를 저장
+	cCharactersInfo CharactersInfo;
 };
