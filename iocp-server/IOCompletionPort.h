@@ -22,32 +22,44 @@ struct stSOCKETINFO
 	int				sendBytes;
 };
 
-class cLocation {
+class cCharacter {
 public:
-	cLocation() {};
-	~cLocation() {};
+	cCharacter() {};
+	~cCharacter() {};
 
+	// 세션 아이디
 	int SessionId;
+	// 위치
 	float X;
 	float Y;
 	float Z;
+	// 회전값
+	float Yaw;
+	float Pitch;
+	float Roll;
 
-	friend ostream& operator<<(ostream &stream, cLocation& loc)
+	friend ostream& operator<<(ostream &stream, cCharacter& info)
 	{
-		stream << loc.SessionId << endl;
-		stream << loc.X << endl;
-		stream << loc.Y<< endl;
-		stream << loc.Z<< endl;
+		stream << info.SessionId << endl;
+		stream << info.X << endl;
+		stream << info.Y << endl;
+		stream << info.Z << endl;
+		stream << info.Yaw << endl;
+		stream << info.Pitch << endl;
+		stream << info.Roll << endl;
 
 		return stream;
 	}
 
-	friend istream& operator>>(istream& stream, cLocation& loc)
+	friend istream& operator>>(istream& stream, cCharacter& info)
 	{
-		stream >> loc.SessionId;
-		stream >> loc.X;
-		stream >> loc.Y;
-		stream >> loc.Z;
+		stream >> info.SessionId;
+		stream >> info.X;
+		stream >> info.Y;
+		stream >> info.Z;
+		stream >> info.Yaw;
+		stream >> info.Pitch;
+		stream >> info.Roll;
 
 		return stream;
 	}
@@ -59,7 +71,7 @@ public:
 	cCharactersInfo() {};
 	~cCharactersInfo() {};
 
-	cLocation WorldCharacterInfo[MAX_CLIENTS];
+	cCharacter WorldCharacterInfo[MAX_CLIENTS];
 
 	friend ostream& operator<<(ostream &stream, cCharactersInfo& info)
 	{

@@ -26,32 +26,44 @@ struct stSOCKETINFO
 	int				sendBytes;
 };
 
-class cLocation {
+class cCharacter {
 public:
-	cLocation() {};
-	~cLocation() {};
+	cCharacter() {};
+	~cCharacter() {};
 
+	// 세션 아이디
 	int SessionId;
+	// 위치
 	float X;
 	float Y;
 	float Z;
+	// 회전값
+	float Yaw;
+	float Pitch;
+	float Roll;
 
-	friend ostream& operator<<(ostream &stream, cLocation& loc)
+	friend ostream& operator<<(ostream &stream, cCharacter& info)
 	{
-		stream << loc.SessionId << endl;
-		stream << loc.X << endl;
-		stream << loc.Y << endl;
-		stream << loc.Z << endl;
+		stream << info.SessionId << endl;
+		stream << info.X << endl;
+		stream << info.Y << endl;
+		stream << info.Z << endl;
+		stream << info.Yaw << endl;
+		stream << info.Pitch << endl;
+		stream << info.Roll << endl;
 
 		return stream;
 	}
 
-	friend istream& operator>>(istream& stream, cLocation& loc)
+	friend istream& operator>>(istream& stream, cCharacter& info)
 	{
-		stream >> loc.SessionId;
-		stream >> loc.X;
-		stream >> loc.Y;
-		stream >> loc.Z;
+		stream >> info.SessionId;
+		stream >> info.X;
+		stream >> info.Y;
+		stream >> info.Z;
+		stream >> info.Yaw;
+		stream >> info.Pitch;
+		stream >> info.Roll;
 
 		return stream;
 	}
@@ -63,7 +75,7 @@ public:
 	cCharactersInfo() {};
 	~cCharactersInfo() {};
 
-	cLocation WorldCharacterInfo[MAX_CLIENTS];
+	cCharacter WorldCharacterInfo[MAX_CLIENTS];
 
 	friend ostream& operator<<(ostream &stream, cCharactersInfo& info)
 	{
@@ -93,12 +105,15 @@ public:
 	ClientSocket();
 	~ClientSocket();
 
+	// 소켓 등록 및 설정
 	bool InitSocket();
+	// 서버와 연결
 	bool Connect(const char * pszIP, int nPort);
-	int SendMyLocation(const int& SessionId, const FVector& ActorLocation);
+	// 캐릭터 동기화
+	cCharactersInfo* SyncCharacters(cCharacter info);
 
 private:
-	SOCKET	m_Socket;
-	char 	recvBuffer[MAX_BUFFER];	
-	cCharactersInfo CharactersInfo;
+	SOCKET	ServerSocket;				// 서버와 연결할 소켓
+	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림
+	cCharactersInfo CharactersInfo;		// 캐릭터 정보
 };

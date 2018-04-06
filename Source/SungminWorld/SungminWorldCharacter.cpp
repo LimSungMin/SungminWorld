@@ -51,8 +51,7 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 	
 	// 세션 아이디 지정 (지금은 랜덤값)
-	SessionId = FMath::RandRange(0, 100);
-	bIsSpawned = false;
+	SessionId = FMath::RandRange(0, 100);	
 
 	// 서버와 연결
 	Socket.InitSocket();
@@ -93,6 +92,16 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 }
 
 
+AActor * ASungminWorldCharacter::FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId)
+{
+	for (const auto& Actor : ActorArray)
+	{
+		if (stoi(*Actor->GetName()) == SessionId)
+			return Actor;
+	}
+	return nullptr;
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
@@ -110,61 +119,83 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 
 void ASungminWorldCharacter::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
-	
-	if (bIsConnected)
-	{		
-		auto MyLocation = GetActorLocation();				
-		int ci = Socket.SendMyLocation(SessionId, MyLocation);						
+	Super::Tick(DeltaTime);	
+	// 서버와 연결되어 있을때만 동기화
+	if (!bIsConnected)
+		return;							
+	// 플레이어의 위치를 가져옴	
+	auto MyLocation = GetActorLocation();	
+	auto MyRotation = GetActorRotation();
+
+	cCharacter Character;
+	Character.SessionId = SessionId;
+	Character.X = MyLocation.X;
+	Character.Y = MyLocation.Y;
+	Character.Z = MyLocation.Z;
+	Character.Yaw = MyRotation.Yaw;
+	Character.Pitch = MyRotation.Pitch;
+	Character.Roll = MyRotation.Roll;
+
+	// 플레이어의 세션 아이디와 위치를 서버에게 보냄
+	cCharactersInfo* ci = Socket.SyncCharacters(Character);				
+	UWorld* const world = GetWorld();
+
+	// 월드 내 OtherCharacter 액터 수집
+	TArray<AActor*> SpawnedCharacters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
 		
-		UE_LOG(LogClass, Log, TEXT("asdasd : %d"), ci);
-
-		TArray<AActor*> SpawnedCharacters;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
-
-		auto DummyLocation = MyLocation;
-		DummyLocation.X += 100;
-		DummyLocation.Y += 100;		
-
-		for (auto Item : SpawnedCharacters)
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		int CharacterSessionId = ci->WorldCharacterInfo[i].SessionId;
+		// 유효한 세션 아이디면서 플레이어의 세션아이디가 아닐때
+		if (CharacterSessionId != -1 && CharacterSessionId != SessionId)
 		{
-			auto Character = Cast<AOtherNetworkCharacter>(Item);
-			Character->SetActorLocation(DummyLocation);						
-		}
-	}	
+			// 월드내 해당 세션 아이디와 매칭되는 Actor 검색			
+			auto Actor = FindActorBySessionId(SpawnedCharacters, CharacterSessionId);
+			// 해당되는 세션 아이디가 없을 시 월드에 스폰
+			if (Actor == nullptr)
+			{
+				FVector SpawnLocation;
+				SpawnLocation.X = ci->WorldCharacterInfo[i].X;
+				SpawnLocation.Y = ci->WorldCharacterInfo[i].Y;
+				SpawnLocation.Z = ci->WorldCharacterInfo[i].Z;
 	
+				FRotator SpawnRotation;
+				SpawnRotation.Yaw = ci->WorldCharacterInfo[i].Yaw;
+				SpawnRotation.Pitch = ci->WorldCharacterInfo[i].Pitch;
+				SpawnRotation.Roll = ci->WorldCharacterInfo[i].Roll;
+	
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = this;
+				SpawnParams.Instigator = Instigator;
+				SpawnParams.Name = FName(*FString(to_string(ci->WorldCharacterInfo[i].SessionId).c_str()));
+		
+				ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+			}
+			// 해당되는 세션 아이다가 있으면 위치 동기화
+			else
+			{
+				FVector CharacterLocation;				
+				CharacterLocation.X = ci->WorldCharacterInfo[CharacterSessionId].X;
+				CharacterLocation.Y = ci->WorldCharacterInfo[CharacterSessionId].Y;
+				CharacterLocation.Z = ci->WorldCharacterInfo[CharacterSessionId].Z;
+
+				FRotator CharacterRotation;
+				CharacterRotation.Yaw = ci->WorldCharacterInfo[CharacterSessionId].Yaw;
+				CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
+				CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
+
+				Actor->SetActorLocation(CharacterLocation);
+				Actor->SetActorRotation(CharacterRotation);
+			}
+		}
+	}					
 }
 
 void ASungminWorldCharacter::BeginPlay()
 {
 	Super::BeginPlay();	
 
-	FVector t;
-	t.X = 69;
-	t.Y = 0;
-	t.Z = 0;
-	// auto ci = Socket.SendMyLocation(99999, t);
-
-	// UE_LOG(LogClass, Log, TEXT("XXXXXXX : %f"), ci->m[99999].x);
-
-	UWorld* const world = GetWorld();
-
-	if (world)
-	{
-		FVector SpawnLocation;
-		SpawnLocation.X = -709;
-		SpawnLocation.Y = -14;
-		SpawnLocation.Z = 230;
-
-		FRotator SpawnRotation(0.f, 0.f, 0.f);
-
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.Instigator = Instigator;
-		SpawnParams.Name = "Dummy1";
-
-		ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);		
-	}	
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)

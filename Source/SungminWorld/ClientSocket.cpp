@@ -9,7 +9,7 @@ ClientSocket::ClientSocket()
 
 ClientSocket::~ClientSocket()
 {
-	closesocket(m_Socket);
+	closesocket(ServerSocket);
 	WSACleanup();
 }
 
@@ -25,8 +25,8 @@ bool ClientSocket::InitSocket()
 
 	// TCP 소켓 생성
 	// m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	m_Socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	if (m_Socket == INVALID_SOCKET) {
+	ServerSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	if (ServerSocket == INVALID_SOCKET) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
 	}
@@ -45,7 +45,7 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	stServerAddr.sin_port = htons(nPort);
 	stServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 
-	int nRet = connect(m_Socket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
+	int nRet = connect(ServerSocket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
 	if (nRet == SOCKET_ERROR) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
@@ -56,29 +56,30 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
-int ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocation)
-{
-	// 위치정보 저장
-	cLocation loc;
-	loc.SessionId = SessionId;
-	loc.X = ActorLocation.X;
-	loc.Y = ActorLocation.Y;
-	loc.Z = ActorLocation.Z;
+cCharactersInfo* ClientSocket::SyncCharacters(cCharacter info)
+{	
+	// 캐릭터 정보 직렬화
+	stringstream InputStream;
+	InputStream << info;
 
-	// 위치정보 전송
-	int nSendLen = send(m_Socket, (CHAR*)&loc, sizeof(cLocation), 0);
+	// 캐릭터 정보 전송
+	int nSendLen = send(
+		ServerSocket, (CHAR*)InputStream.str().c_str(), InputStream.str().length(), 0
+	);
 		
 	if (nSendLen == -1)
 	{
-		return -1;
+		return nullptr;
 	}
 		
 	// 서버응답 수신
-	int nRecvLen = recv(m_Socket, (CHAR*)&recvBuffer, MAX_BUFFER, 0);
+	int nRecvLen = recv(
+		ServerSocket, (CHAR*)&recvBuffer, MAX_BUFFER, 0
+	);
 
 	if (nRecvLen == -1)
 	{
-		return -1;
+		return nullptr;
 	}
 	else {		
 		// 역직렬화
@@ -86,14 +87,6 @@ int ClientSocket::SendMyLocation(const int& SessionId, const FVector& ActorLocat
 		OutputStream << recvBuffer;
 		OutputStream >> CharactersInfo;
 
-		for (int i = 0; i < MAX_CLIENTS; i++)
-		{
-			int ssId = CharactersInfo.WorldCharacterInfo[i].SessionId;
-			if (ssId != -1)
-			{
-				return CharactersInfo.WorldCharacterInfo[i].X;
-			}
-		}
-		return -1;
+		return &CharactersInfo;
 	}			
 }
