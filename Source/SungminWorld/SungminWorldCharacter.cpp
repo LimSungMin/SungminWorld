@@ -11,6 +11,7 @@
 #include "OtherNetworkCharacter.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Blueprint/UserWidget.h"
 #include <string>
 
 //////////////////////////////////////////////////////////////////////////
@@ -53,6 +54,11 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// 세션 아이디 지정 (지금은 랜덤값)
 	SessionId = FMath::RandRange(0, 100);	
 
+	// 체력, 에너지, 기분 기정
+	HealthValue = 0.5f;
+	EnergyValue = 0.5f;
+	MoodValue = 0.5f;
+
 	// 서버와 연결
 	Socket.InitSocket();
 	bIsConnected = Socket.Connect("127.0.0.1", 8000);
@@ -69,7 +75,8 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	// PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASungminWorldCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ASungminWorldCharacter::MoveForward);
@@ -89,6 +96,16 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ASungminWorldCharacter::OnResetVR);
+}
+
+void ASungminWorldCharacter::Jump()
+{
+	ACharacter::Jump();
+
+	if (!GetCharacterMovement()->IsFalling())
+	{
+		EnergyValue -= 0.05f;
+	}	
 }
 
 
@@ -196,6 +213,14 @@ void ASungminWorldCharacter::BeginPlay()
 {
 	Super::BeginPlay();	
 
+	if (HUDWidgetClass != nullptr)
+	{
+		CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), HUDWidgetClass);
+		if (CurrentWidget != nullptr)
+		{
+			CurrentWidget->AddToViewport();
+		}
+	}
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)

@@ -8,6 +8,6 @@ public class SungminWorldTarget : TargetRules
 	public SungminWorldTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
-		ExtraModuleNames.Add("SungminWorld");
-	}
+		ExtraModuleNames.Add("SungminWorld");        
+    }
 }

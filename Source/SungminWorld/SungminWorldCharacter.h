@@ -30,6 +30,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	// 체력
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Properties")
+	float HealthValue;
+
+	// 에너지
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Properties")
+	float EnergyValue;
+
+	// 기분
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Properties")
+	float MoodValue;
+
 	AActor* FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId);
 
 protected:
@@ -65,6 +77,14 @@ protected:
 
 	virtual void BeginPlay() override;	
 
+	// HUD 화면에서 쓸 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Properties", Meta = (BlueprintProtect = "true"))
+	TSubclassOf<class UUserWidget> HUDWidgetClass;
+
+	// HUD 객체
+	UPROPERTY()
+	class UUserWidget* CurrentWidget;
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -83,5 +103,8 @@ private:
 	ClientSocket	Socket;			// 서버와 접속할 소켓
 	bool			bIsConnected;	// 서버와 접속 유무
 	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)		
+
+	// 플레이어 캐릭터 점프
+	void Jump();
 };
 
