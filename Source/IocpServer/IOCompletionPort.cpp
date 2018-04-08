@@ -2,9 +2,6 @@
 #include "IOCompletionPort.h"
 #include <process.h>
 #include <sstream>
-#include <boost/serialization/map.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 
 unsigned int WINAPI CallWorkerThread(LPVOID p)
 {
@@ -25,7 +22,7 @@ IOCompletionPort::IOCompletionPort()
 		CharactersInfo.WorldCharacterInfo[i].X = -1;
 		CharactersInfo.WorldCharacterInfo[i].Y= -1;
 		CharactersInfo.WorldCharacterInfo[i].Z= -1;
-	}
+	}	
 }
 
 

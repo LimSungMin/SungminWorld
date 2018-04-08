@@ -4,7 +4,7 @@
 #include <WinSock2.h>
 #include <map>
 #include <iostream>
-// #include "custom_struct.h"
+#include "CommonClass.h"
 
 using namespace std;
 
@@ -20,76 +20,6 @@ struct stSOCKETINFO
 	char			messageBuffer[MAX_BUFFER];
 	int				recvBytes;
 	int				sendBytes;
-};
-
-class cCharacter {
-public:
-	cCharacter() {};
-	~cCharacter() {};
-
-	// 세션 아이디
-	int SessionId;
-	// 위치
-	float X;
-	float Y;
-	float Z;
-	// 회전값
-	float Yaw;
-	float Pitch;
-	float Roll;
-
-	friend ostream& operator<<(ostream &stream, cCharacter& info)
-	{
-		stream << info.SessionId << endl;
-		stream << info.X << endl;
-		stream << info.Y << endl;
-		stream << info.Z << endl;
-		stream << info.Yaw << endl;
-		stream << info.Pitch << endl;
-		stream << info.Roll << endl;
-
-		return stream;
-	}
-
-	friend istream& operator>>(istream& stream, cCharacter& info)
-	{
-		stream >> info.SessionId;
-		stream >> info.X;
-		stream >> info.Y;
-		stream >> info.Z;
-		stream >> info.Yaw;
-		stream >> info.Pitch;
-		stream >> info.Roll;
-
-		return stream;
-	}
-};
-
-class cCharactersInfo
-{
-public:
-	cCharactersInfo() {};
-	~cCharactersInfo() {};
-
-	cCharacter WorldCharacterInfo[MAX_CLIENTS];
-
-	friend ostream& operator<<(ostream &stream, cCharactersInfo& info)
-	{
-		for (int i = 0; i < MAX_CLIENTS; i++)
-		{
-			stream << info.WorldCharacterInfo[i] << endl;			
-		}
-		return stream;
-	}
-
-	friend istream &operator>>(istream &stream, cCharactersInfo& info)
-	{
-		for (int i = 0; i < MAX_CLIENTS; i++)
-		{												
-			stream >> info.WorldCharacterInfo[i];
-		}
-		return stream;
-	}
 };
 
 class IOCompletionPort
@@ -113,7 +43,6 @@ private:
 	HANDLE			hIOCP;			// IOCP 객체 핸들
 	bool			bAccept;			// 요청 동작 플래그
 	bool			bWorkerThread;	// 작업 스레드 동작 플래그
-	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들	
-	// location		WorldCharacterInfo[MAX_CLIENTS]; // 접속한 클라이언트의 정보를 저장
-	cCharactersInfo CharactersInfo;
+	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들		
+	cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장
 };

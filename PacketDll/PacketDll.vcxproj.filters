@@ -21,7 +21,7 @@
     <ClInclude Include="targetver.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="IOCompletionPort.h">
+    <ClInclude Include="CommonClass.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,10 +29,13 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="IOCompletionPort.cpp">
+    <ClCompile Include="PacketDll.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="iocp-server.cpp">
+    <ClCompile Include="dllmain.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonClass.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
