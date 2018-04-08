@@ -10,6 +10,13 @@ unsigned int WINAPI CallWorkerThread(LPVOID p)
 	return 0;
 }
 
+unsigned int WINAPI CallUdpThread(LPVOID p)
+{
+	IOCompletionPort* pOverlappedEvent = (IOCompletionPort*)p;
+	pOverlappedEvent->UdpThread();
+	return 0;
+}
+
 IOCompletionPort::IOCompletionPort()
 {
 	// 멤버 변수 초기화
@@ -58,8 +65,9 @@ bool IOCompletionPort::Initialize()
 	}
 
 	// 소켓 생성
-	ListenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	if (ListenSocket == INVALID_SOCKET)
+	ListenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);	
+	// UdpListenSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
+	if (ListenSocket == INVALID_SOCKET || UdpListenSocket == INVALID_SOCKET)
 	{
 		printf_s("[ERROR] 소켓 생성 실패\n");
 		return false;
@@ -71,9 +79,15 @@ bool IOCompletionPort::Initialize()
 	serverAddr.sin_port = htons(SERVER_PORT);
 	serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
 
+// 	SOCKADDR_IN udpServerAddr;
+// 	udpServerAddr.sin_family = PF_INET;
+// 	udpServerAddr.sin_port = htons(UDP_SERVER_PORT);
+// 	udpServerAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+
 	// 소켓 설정
 	// boost bind 와 구별짓기 위해 ::bind 사용
 	nResult = ::bind(ListenSocket, (struct sockaddr*)&serverAddr, sizeof(SOCKADDR_IN));
+	// nResult = ::bind(UdpListenSocket, (struct sockaddr*)&udpServerAddr, sizeof(SOCKADDR_IN));
 	if (nResult == SOCKET_ERROR)
 	{
 		printf_s("[ERROR] bind 실패\n");
@@ -187,6 +201,20 @@ bool IOCompletionPort::CreateWorkerThread()
 	return true;
 }
 
+bool IOCompletionPort::CreateUdpThread()
+{
+	unsigned int threadId;
+	hUdpHandle = (HANDLE *)_beginthreadex(
+		NULL, 0, &CallUdpThread, this, CREATE_SUSPENDED, &threadId
+	);
+	if (hUdpHandle == NULL)
+	{
+		printf_s("[ERROR] Udp Thread 생성 실패\n");
+		return false;
+	}
+	ResumeThread(hUdpHandle);
+}
+
 void IOCompletionPort::WorkerThread()
 {		
 	// 함수 호출 성공 여부
@@ -258,7 +286,7 @@ void IOCompletionPort::WorkerThread()
 			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
 			pSocketInfo->dataBuf.len = SendStream.str().length();			
 
-			// 다른 클라이언트의 정보를 송신
+			// 다른 클라이언트의 정보를 송신			
 			nResult = WSASend(
 				pSocketInfo->socket,
 				&(pSocketInfo->dataBuf),
@@ -299,6 +327,32 @@ void IOCompletionPort::WorkerThread()
 			{
 				printf_s("[ERROR] WSARecv 실패 : ", WSAGetLastError());
 			}
+		}
+	}
+}
+
+void IOCompletionPort::UdpThread()
+{
+	struct sockaddr_in echoClntAddr; /* Client address */
+	int cliLen;
+	char echoBuffer[MAX_BUFFER];
+	int recvMsgSize;
+	while (bAccept)
+	{
+		/* Set the size of the in-out parameter */
+		/* Notice : cliLen이 설정되지 않으면 recvfrom은 실패한다. */
+		cliLen = sizeof(echoClntAddr);
+		/* Block until receive message from a client */
+		if ((recvMsgSize = recvfrom(UdpListenSocket, echoBuffer, MAX_BUFFER, 0,
+			(struct sockaddr *) &echoClntAddr, &cliLen)) < 0)
+		{
+		}
+		//DieWithError("recvfrom() failed");
+		printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+		/* Send received datagram back to the client */
+		if (sendto(UdpListenSocket, "fuck", recvMsgSize, 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
+		{
+			printf_s("sendto() sent a different number of bytes than expected");
 		}
 	}
 }
