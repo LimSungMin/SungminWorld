@@ -104,7 +104,15 @@ void ASungminWorldCharacter::Jump()
 
 	if (!GetCharacterMovement()->IsFalling())
 	{
-		EnergyValue -= 0.05f;
+		if (EnergyValue > 0)
+		{
+			EnergyValue -= 0.05f;
+		}
+		else
+		{
+			EnergyValue = 0;
+		}
+		
 	}	
 }
 

@@ -12,6 +12,11 @@ using namespace std;
 
 #define MAX_CLIENTS 100
 
+enum COMMONCLASS_API EPacketType
+{
+	SEND_CHARACTER
+};
+
 class COMMONCLASS_API cCharacter {
 public:
 	cCharacter();

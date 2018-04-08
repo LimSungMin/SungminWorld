@@ -8,6 +8,7 @@
 #include <WinSock2.h>
 #include <iostream>
 #include <map>
+//#include "CommonClass.h"
 
 using namespace std;
 
@@ -69,6 +70,11 @@ public:
 	}
 };
 
+enum EPacketType 
+{
+	SEND_CHARACTER
+};
+
 class cCharactersInfo
 {
 public:
@@ -110,7 +116,7 @@ public:
 	// 서버와 연결
 	bool Connect(const char * pszIP, int nPort);
 	// 캐릭터 동기화
-	cCharactersInfo* SyncCharacters(cCharacter info);
+	cCharactersInfo* SyncCharacters(cCharacter& info);
 
 private:
 	SOCKET	ServerSocket;				// 서버와 연결할 소켓

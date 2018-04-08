@@ -36,6 +36,8 @@ public:
 	bool CreateWorkerThread();
 	// 작업 스레드
 	void WorkerThread();
+	//
+	void SyncCharacters(stringstream& RecvStream, stringstream& SendStream);
 
 private:
 	stSOCKETINFO *	SocketInfo;		// 소켓 정보
@@ -44,5 +46,5 @@ private:
 	bool			bAccept;			// 요청 동작 플래그
 	bool			bWorkerThread;	// 작업 스레드 동작 플래그
 	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들		
-	cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장
+	cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
 };

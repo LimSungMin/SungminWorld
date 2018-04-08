@@ -56,10 +56,12 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
-cCharactersInfo* ClientSocket::SyncCharacters(cCharacter info)
+cCharactersInfo* ClientSocket::SyncCharacters(cCharacter& info)
 {	
 	// 캐릭터 정보 직렬화
 	stringstream InputStream;
+	// 요청 종류
+	InputStream << EPacketType::SEND_CHARACTER << endl;;
 	InputStream << info;
 
 	// 캐릭터 정보 전송

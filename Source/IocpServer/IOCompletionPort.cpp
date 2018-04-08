@@ -234,28 +234,24 @@ void IOCompletionPort::WorkerThread()
 		}
 		else
 		{			
+			int PacketType;			
 			// 클라이언트 정보 역직렬화
 			stringstream RecvStream;
-			cCharacter info;
-			RecvStream << pSocketInfo->dataBuf.buf;
-			RecvStream >> info;			
-			
- 			printf_s("[INFO] [%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
- 				info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);
-
-			// 캐릭터의 위치를 저장						
-			CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
-			CharactersInfo.WorldCharacterInfo[info.SessionId].X = info.X;
-			CharactersInfo.WorldCharacterInfo[info.SessionId].Y = info.Y;
-			CharactersInfo.WorldCharacterInfo[info.SessionId].Z = info.Z;
-			// 캐릭터의 회전값을 저장
-			CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
-			CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
-			CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
-
-			// 직렬화
 			stringstream SendStream;
-			SendStream << CharactersInfo;			
+			
+			RecvStream << pSocketInfo->dataBuf.buf;
+			RecvStream >> PacketType;
+
+			switch (PacketType)
+			{
+			case EPacketType::SEND_CHARACTER:
+			{
+				SyncCharacters(RecvStream, SendStream);
+			}
+			break;
+			default:
+				break;
+			}			
 			
 			// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음
 			CopyMemory(pSocketInfo->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
@@ -305,4 +301,26 @@ void IOCompletionPort::WorkerThread()
 			}
 		}
 	}
+}
+
+void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stringstream& SendStream)
+{
+	cCharacter info;
+	RecvStream >> info;
+
+	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
+		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
+	
+	// 캐릭터의 위치를 저장						
+	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].X = info.X;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Y = info.Y;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Z = info.Z;
+	// 캐릭터의 회전값을 저장
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
+	
+	// 직렬화	
+	SendStream << CharactersInfo;	
 }
