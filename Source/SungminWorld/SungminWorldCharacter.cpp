@@ -8,11 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "OtherNetworkCharacter.h"
-#include "Engine/World.h"
-#include "Kismet/GameplayStatics.h"
-#include "Blueprint/UserWidget.h"
-#include <string>
+#include "Classes/Components/SphereComponent.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -49,23 +45,12 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
-	
-	// 세션 아이디 지정 (지금은 랜덤값)
-	SessionId = FMath::RandRange(0, 100);	
+	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)		
 
 	// 체력, 에너지, 기분 기정
 	HealthValue = 0.5f;
 	EnergyValue = 0.5f;
-	MoodValue = 0.5f;
-
-	// 서버와 연결
-	Socket.InitSocket();
-	bIsConnected = Socket.Connect("127.0.0.1", 8000);
-	if (bIsConnected)
-	{				
-		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
-	}	
+	MoodValue = 0.5f;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -78,6 +63,8 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 	// PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASungminWorldCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAction("Hit", IE_Pressed, this, &ASungminWorldCharacter::HitOtherCharacter);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ASungminWorldCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ASungminWorldCharacter::MoveRight);
@@ -116,17 +103,6 @@ void ASungminWorldCharacter::Jump()
 	}	
 }
 
-
-AActor * ASungminWorldCharacter::FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId)
-{
-	for (const auto& Actor : ActorArray)
-	{
-		if (stoi(*Actor->GetName()) == SessionId)
-			return Actor;
-	}
-	return nullptr;
-}
-
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
@@ -142,103 +118,9 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 		StopJumping();
 }
 
-void ASungminWorldCharacter::Tick(float DeltaTime)
+void ASungminWorldCharacter::HitOtherCharacter()
 {
-	Super::Tick(DeltaTime);	
-	// 서버와 연결되어 있을때만 동기화
-	if (!bIsConnected)
-		return;							
-	// 플레이어의 위치를 가져옴	
-	auto MyLocation = GetActorLocation();	
-	auto MyRotation = GetActorRotation();
 
-	cCharacter Character;
-	Character.SessionId = SessionId;
-	Character.X = MyLocation.X;
-	Character.Y = MyLocation.Y;
-	Character.Z = MyLocation.Z;
-	Character.Yaw = MyRotation.Yaw;
-	Character.Pitch = MyRotation.Pitch;
-	Character.Roll = MyRotation.Roll;
-
-	// 플레이어의 세션 아이디와 위치를 서버에게 보냄
-	cCharactersInfo* ci = Socket.SyncCharacters(Character);
-	if (ci == nullptr)
-		return;
-
-	UWorld* const world = GetWorld();
-	if (world == nullptr)
-		return;
-
-	// 월드 내 OtherCharacter 액터 수집
-	TArray<AActor*> SpawnedCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
-		
-	for (int i = 0; i < MAX_CLIENTS; i++)
-	{
-		int CharacterSessionId = ci->WorldCharacterInfo[i].SessionId;
-		// 유효한 세션 아이디면서 플레이어의 세션아이디가 아닐때
-		if (CharacterSessionId != -1 && CharacterSessionId != SessionId && ci->WorldCharacterInfo[i].X != -1)
-		{
-			// 월드내 해당 세션 아이디와 매칭되는 Actor 검색			
-			auto Actor = FindActorBySessionId(SpawnedCharacters, CharacterSessionId);
-			// 해당되는 세션 아이디가 없을 시 월드에 스폰
-			if (Actor == nullptr)
-			{
-				FVector SpawnLocation;
-				SpawnLocation.X = ci->WorldCharacterInfo[i].X;
-				SpawnLocation.Y = ci->WorldCharacterInfo[i].Y;
-				SpawnLocation.Z = ci->WorldCharacterInfo[i].Z;
-	
-				FRotator SpawnRotation;
-				SpawnRotation.Yaw = ci->WorldCharacterInfo[i].Yaw;
-				SpawnRotation.Pitch = ci->WorldCharacterInfo[i].Pitch;
-				SpawnRotation.Roll = ci->WorldCharacterInfo[i].Roll;
-	
-				FActorSpawnParameters SpawnParams;
-				SpawnParams.Owner = this;
-				SpawnParams.Instigator = Instigator;
-				SpawnParams.Name = FName(*FString(to_string(ci->WorldCharacterInfo[i].SessionId).c_str()));
-		
-				ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
-			}
-			// 해당되는 세션 아이다가 있으면 위치 동기화
-			else
-			{				
-				FVector CharacterLocation;				
-				CharacterLocation.X = ci->WorldCharacterInfo[CharacterSessionId].X;
-				CharacterLocation.Y = ci->WorldCharacterInfo[CharacterSessionId].Y;
-				CharacterLocation.Z = ci->WorldCharacterInfo[CharacterSessionId].Z;
-
-				FRotator CharacterRotation;
-				CharacterRotation.Yaw = ci->WorldCharacterInfo[CharacterSessionId].Yaw;
-				CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
-				CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
-
-				Actor->SetActorLocation(CharacterLocation);
-				Actor->SetActorRotation(CharacterRotation);
-			}
-		}
-	}	
-}
-
-void ASungminWorldCharacter::BeginPlay()
-{
-	Super::BeginPlay();	
-
-	if (HUDWidgetClass != nullptr)
-	{
-		CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), HUDWidgetClass);
-		if (CurrentWidget != nullptr)
-		{
-			CurrentWidget->AddToViewport();
-		}
-	}
-}
-
-void ASungminWorldCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Socket.LogoutCharacter(SessionId);
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)

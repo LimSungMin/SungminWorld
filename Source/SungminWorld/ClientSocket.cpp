@@ -26,7 +26,7 @@ bool ClientSocket::InitSocket()
 	// TCP 소켓 생성
 	// m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ServerSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	UdpServerSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
+	// UdpServerSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
 	if (ServerSocket == INVALID_SOCKET) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
@@ -46,10 +46,10 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	stServerAddr.sin_port = htons(nPort);
 	stServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 	
-	UdpServerAddr.sin_family = AF_INET;
-	// 접속할 서버 포트 및 IP
-	UdpServerAddr.sin_port = htons(UDP_SERVER_PORT);
-	UdpServerAddr.sin_addr.s_addr = inet_addr(pszIP);
+// 	UdpServerAddr.sin_family = AF_INET;
+// 	// 접속할 서버 포트 및 IP
+// 	UdpServerAddr.sin_port = htons(UDP_SERVER_PORT);
+// 	UdpServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 
 	int nRet = connect(ServerSocket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
 	if (nRet == SOCKET_ERROR) {
@@ -113,6 +113,9 @@ void ClientSocket::LogoutCharacter(int SessionId)
 	{
 		return;
 	}
+	
+	closesocket(ServerSocket);
+	WSACleanup();
 }
 
 char* ClientSocket::UdpTest()

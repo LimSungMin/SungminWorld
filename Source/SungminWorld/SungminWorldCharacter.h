@@ -40,9 +40,7 @@ public:
 
 	// 기분
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Properties")
-	float MoodValue;
-
-	AActor* FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId);
+	float MoodValue;	
 
 protected:
 
@@ -72,40 +70,20 @@ protected:
 
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);	
-	
-	virtual void Tick(float DeltaTime) override;
 
-	virtual void BeginPlay() override;	
-
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	// HUD 화면에서 쓸 위젯 클래스
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Properties", Meta = (BlueprintProtect = "true"))
-	TSubclassOf<class UUserWidget> HUDWidgetClass;
-
-	// HUD 객체
-	UPROPERTY()
-	class UUserWidget* CurrentWidget;
+	void HitOtherCharacter();	
 
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
-	// 스폰시킬 다른 캐릭터
-	UPROPERTY(EditAnywhere, Category = "Spawning")
-	TSubclassOf<class ACharacter> WhoToSpawn;
-
 public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-private:
-	ClientSocket	Socket;			// 서버와 접속할 소켓
-	bool			bIsConnected;	// 서버와 접속 유무
-	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)		
-
+private:	
 	// 플레이어 캐릭터 점프
 	void Jump();
 };
