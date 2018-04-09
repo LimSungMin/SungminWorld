@@ -66,7 +66,7 @@ bool IOCompletionPort::Initialize()
 
 	// 소켓 생성
 	ListenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);	
-	// UdpListenSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
+	UdpListenSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
 	if (ListenSocket == INVALID_SOCKET || UdpListenSocket == INVALID_SOCKET)
 	{
 		printf_s("[ERROR] 소켓 생성 실패\n");
@@ -79,15 +79,15 @@ bool IOCompletionPort::Initialize()
 	serverAddr.sin_port = htons(SERVER_PORT);
 	serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
 
-// 	SOCKADDR_IN udpServerAddr;
-// 	udpServerAddr.sin_family = PF_INET;
-// 	udpServerAddr.sin_port = htons(UDP_SERVER_PORT);
-// 	udpServerAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+	SOCKADDR_IN udpServerAddr;
+	udpServerAddr.sin_family = PF_INET;
+	udpServerAddr.sin_port = htons(UDP_SERVER_PORT);
+	udpServerAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
 
 	// 소켓 설정
 	// boost bind 와 구별짓기 위해 ::bind 사용
 	nResult = ::bind(ListenSocket, (struct sockaddr*)&serverAddr, sizeof(SOCKADDR_IN));
-	// nResult = ::bind(UdpListenSocket, (struct sockaddr*)&udpServerAddr, sizeof(SOCKADDR_IN));
+	nResult = ::bind(UdpListenSocket, (struct sockaddr*)&udpServerAddr, sizeof(SOCKADDR_IN));
 	if (nResult == SOCKET_ERROR)
 	{
 		printf_s("[ERROR] bind 실패\n");
@@ -124,6 +124,7 @@ void IOCompletionPort::StartServer()
 
 	// Worker Thread 생성
 	if (!CreateWorkerThread()) return;
+	if (!CreateUdpThread()) return;
 
 	printf_s("[INFO] 서버 시작...\n");
 
@@ -213,6 +214,7 @@ bool IOCompletionPort::CreateUdpThread()
 		return false;
 	}
 	ResumeThread(hUdpHandle);
+	return true;
 }
 
 void IOCompletionPort::WorkerThread()
@@ -277,6 +279,11 @@ void IOCompletionPort::WorkerThread()
 				SyncCharacters(RecvStream, SendStream);
 			}
 			break;
+			case EPacketType::LOGOUT_CHARACTER:
+			{
+				LogoutCharacter(RecvStream);
+			}
+			break;
 			default:
 				break;
 			}			
@@ -332,28 +339,50 @@ void IOCompletionPort::WorkerThread()
 }
 
 void IOCompletionPort::UdpThread()
-{
-	struct sockaddr_in echoClntAddr; /* Client address */
-	int cliLen;
-	char echoBuffer[MAX_BUFFER];
-	int recvMsgSize;
+{	
+	int nResult;	
+	SOCKADDR_IN clientAddr;
+	int clientAddrSize = sizeof(clientAddr);	
+	char RecvBuffer[MAX_BUFFER];
+	char SendBuffer[MAX_BUFFER];
+	int PacketType;
+
 	while (bAccept)
-	{
-		/* Set the size of the in-out parameter */
-		/* Notice : cliLen이 설정되지 않으면 recvfrom은 실패한다. */
-		cliLen = sizeof(echoClntAddr);
-		/* Block until receive message from a client */
-		if ((recvMsgSize = recvfrom(UdpListenSocket, echoBuffer, MAX_BUFFER, 0,
-			(struct sockaddr *) &echoClntAddr, &cliLen)) < 0)
-		{
-		}
-		//DieWithError("recvfrom() failed");
-		printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-		/* Send received datagram back to the client */
-		if (sendto(UdpListenSocket, "fuck", recvMsgSize, 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
-		{
-			printf_s("sendto() sent a different number of bytes than expected");
-		}
+	{		
+		nResult = recvfrom(
+			UdpListenSocket,
+			RecvBuffer,
+			MAX_BUFFER,
+			0,
+			(struct sockaddr *)&clientAddr,
+			&clientAddrSize
+		);
+		printf_s("%s\n", RecvBuffer);
+
+// 		stringstream RecvStream;
+// 		stringstream SendStream;
+// 		RecvStream << RecvBuffer;
+// 		RecvStream >> PacketType;
+// 
+// 		switch (PacketType)
+// 		{
+// 		case EPacketType::SEND_CHARACTER:
+// 		{
+// 			SyncCharacters(RecvStream, SendStream);
+// 		}
+// 		break;
+// 		default:		
+// 			break;
+// 		}		
+// 		CopyMemory(SendBuffer, (char*)SendStream.str().c_str(), SendStream.str().length());
+		nResult = sendto(
+			UdpListenSocket,
+			"world",
+			6,
+			0,
+			(struct sockaddr *)&clientAddr,
+			clientAddrSize
+		);
 	}
 }
 
@@ -377,4 +406,20 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stringstream& Se
 	
 	// 직렬화	
 	SendStream << CharactersInfo;	
+}
+
+void IOCompletionPort::LogoutCharacter(stringstream& RecvStream)
+{
+	int SessionId;
+	RecvStream >> SessionId;
+	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);
+
+	// CharactersInfo.WorldCharacterInfo[SessionId].SessionId = -1;
+	CharactersInfo.WorldCharacterInfo[SessionId].X = -1;
+	CharactersInfo.WorldCharacterInfo[SessionId].Y = -1;
+	CharactersInfo.WorldCharacterInfo[SessionId].Z = -1;
+	// 캐릭터의 회전값을 저장
+	CharactersInfo.WorldCharacterInfo[SessionId].Yaw = -1;
+	CharactersInfo.WorldCharacterInfo[SessionId].Pitch = -1;
+	CharactersInfo.WorldCharacterInfo[SessionId].Roll = -1;
 }

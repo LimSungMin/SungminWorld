@@ -14,7 +14,8 @@ using namespace std;
 
 enum COMMONCLASS_API EPacketType
 {
-	SEND_CHARACTER
+	SEND_CHARACTER,
+	LOGOUT_CHARACTER
 };
 
 class COMMONCLASS_API cCharacter {

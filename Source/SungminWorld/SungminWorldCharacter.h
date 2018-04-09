@@ -77,6 +77,8 @@ protected:
 
 	virtual void BeginPlay() override;	
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	// HUD 화면에서 쓸 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Properties", Meta = (BlueprintProtect = "true"))
 	TSubclassOf<class UUserWidget> HUDWidgetClass;

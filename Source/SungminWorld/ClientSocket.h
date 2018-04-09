@@ -14,6 +14,7 @@ using namespace std;
 
 #define	MAX_BUFFER		4096
 #define SERVER_PORT		8000
+#define UDP_SERVER_PORT	8001
 #define SERVER_IP		"127.0.0.1"
 #define MAX_CLIENTS		100
 
@@ -72,7 +73,8 @@ public:
 
 enum EPacketType 
 {
-	SEND_CHARACTER
+	SEND_CHARACTER,
+	LOGOUT_CHARACTER
 };
 
 class cCharactersInfo
@@ -117,9 +119,15 @@ public:
 	bool Connect(const char * pszIP, int nPort);
 	// 캐릭터 동기화
 	cCharactersInfo* SyncCharacters(cCharacter& info);
+	// 캐릭터 로그아웃
+	void LogoutCharacter(int SessionId);
+	char* UdpTest();
 
 private:
 	SOCKET	ServerSocket;				// 서버와 연결할 소켓
+	SOCKET	UdpServerSocket;
 	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림
+	char UdpRecvBuffer[MAX_BUFFER];
 	cCharactersInfo CharactersInfo;		// 캐릭터 정보
+	SOCKADDR_IN	UdpServerAddr;
 };

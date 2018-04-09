@@ -40,8 +40,10 @@ public:
 	// 작업 스레드
 	void WorkerThread();
 	void UdpThread();
-	//
+	// 캐릭터 위치 동기화
 	void SyncCharacters(stringstream& RecvStream, stringstream& SendStream);
+	// 캐릭터 로그아웃 처리
+	void LogoutCharacter(stringstream& RecvStream);
 
 private:
 	stSOCKETINFO *	SocketInfo;		// 소켓 정보

@@ -65,7 +65,7 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	if (bIsConnected)
 	{				
 		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
-	}
+	}	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -162,8 +162,13 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 	Character.Roll = MyRotation.Roll;
 
 	// 플레이어의 세션 아이디와 위치를 서버에게 보냄
-	cCharactersInfo* ci = Socket.SyncCharacters(Character);				
+	cCharactersInfo* ci = Socket.SyncCharacters(Character);
+	if (ci == nullptr)
+		return;
+
 	UWorld* const world = GetWorld();
+	if (world == nullptr)
+		return;
 
 	// 월드 내 OtherCharacter 액터 수집
 	TArray<AActor*> SpawnedCharacters;
@@ -173,7 +178,7 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 	{
 		int CharacterSessionId = ci->WorldCharacterInfo[i].SessionId;
 		// 유효한 세션 아이디면서 플레이어의 세션아이디가 아닐때
-		if (CharacterSessionId != -1 && CharacterSessionId != SessionId)
+		if (CharacterSessionId != -1 && CharacterSessionId != SessionId && ci->WorldCharacterInfo[i].X != -1)
 		{
 			// 월드내 해당 세션 아이디와 매칭되는 Actor 검색			
 			auto Actor = FindActorBySessionId(SpawnedCharacters, CharacterSessionId);
@@ -199,7 +204,7 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 			}
 			// 해당되는 세션 아이다가 있으면 위치 동기화
 			else
-			{
+			{				
 				FVector CharacterLocation;				
 				CharacterLocation.X = ci->WorldCharacterInfo[CharacterSessionId].X;
 				CharacterLocation.Y = ci->WorldCharacterInfo[CharacterSessionId].Y;
@@ -214,7 +219,7 @@ void ASungminWorldCharacter::Tick(float DeltaTime)
 				Actor->SetActorRotation(CharacterRotation);
 			}
 		}
-	}					
+	}	
 }
 
 void ASungminWorldCharacter::BeginPlay()
@@ -229,6 +234,11 @@ void ASungminWorldCharacter::BeginPlay()
 			CurrentWidget->AddToViewport();
 		}
 	}
+}
+
+void ASungminWorldCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Socket.LogoutCharacter(SessionId);
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)

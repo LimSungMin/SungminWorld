@@ -26,6 +26,7 @@ bool ClientSocket::InitSocket()
 	// TCP 소켓 생성
 	// m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ServerSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	UdpServerSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
 	if (ServerSocket == INVALID_SOCKET) {
 		// std::cout << "Error : " << WSAGetLastError() << std::endl;
 		return false;
@@ -44,6 +45,11 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	// 접속할 서버 포트 및 IP
 	stServerAddr.sin_port = htons(nPort);
 	stServerAddr.sin_addr.s_addr = inet_addr(pszIP);
+	
+	UdpServerAddr.sin_family = AF_INET;
+	// 접속할 서버 포트 및 IP
+	UdpServerAddr.sin_port = htons(UDP_SERVER_PORT);
+	UdpServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 
 	int nRet = connect(ServerSocket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
 	if (nRet == SOCKET_ERROR) {
@@ -59,14 +65,14 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 cCharactersInfo* ClientSocket::SyncCharacters(cCharacter& info)
 {	
 	// 캐릭터 정보 직렬화
-	stringstream InputStream;
+	stringstream SendStream;
 	// 요청 종류
-	InputStream << EPacketType::SEND_CHARACTER << endl;;
-	InputStream << info;
+	SendStream << EPacketType::SEND_CHARACTER << endl;;
+	SendStream << info;
 
 	// 캐릭터 정보 전송
 	int nSendLen = send(
-		ServerSocket, (CHAR*)InputStream.str().c_str(), InputStream.str().length(), 0
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
 	);
 		
 	if (nSendLen == -1)
@@ -85,10 +91,45 @@ cCharactersInfo* ClientSocket::SyncCharacters(cCharacter& info)
 	}
 	else {		
 		// 역직렬화
-		stringstream OutputStream;
-		OutputStream << recvBuffer;
-		OutputStream >> CharactersInfo;
+		stringstream RecvStream;
+		RecvStream << recvBuffer;
+		RecvStream >> CharactersInfo;
 
 		return &CharactersInfo;
 	}			
+}
+
+void ClientSocket::LogoutCharacter(int SessionId)
+{
+	stringstream SendStream;
+	SendStream << EPacketType::LOGOUT_CHARACTER << endl;
+	SendStream << SessionId << endl;
+
+	int nSendLen = send(
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
+	);
+
+	if (nSendLen == -1)
+	{
+		return;
+	}
+}
+
+char* ClientSocket::UdpTest()
+{
+	int nResult;
+	char * sendBuffer = (char*)"hello";
+	int sendBufferLen = strlen(sendBuffer);
+	
+	SOCKADDR_IN fromAddr;
+	int fromAddrLen = sizeof(fromAddr);
+	nResult = sendto(
+		UdpServerSocket, sendBuffer, sendBufferLen, 0, (sockaddr*)&UdpServerAddr, sizeof(UdpServerAddr)
+	);
+
+	nResult = recvfrom(
+		UdpServerSocket, UdpRecvBuffer, MAX_BUFFER, 0, (sockaddr*)&fromAddr, &fromAddrLen
+	);
+
+	return UdpRecvBuffer;
 }
