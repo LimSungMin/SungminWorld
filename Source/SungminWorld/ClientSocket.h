@@ -8,7 +8,9 @@
 #include <WinSock2.h>
 #include <iostream>
 #include <map>
-//#include "CommonClass.h"
+#include "Runtime/Core/Public/HAL/Runnable.h"
+
+class ASungminWorldGameMode;
 
 using namespace std;
 
@@ -71,10 +73,13 @@ public:
 	}
 };
 
-enum EPacketType 
+enum EPacketType
 {
 	SEND_CHARACTER,
-	LOGOUT_CHARACTER
+	RECV_CHARACTER,
+	LOGOUT_CHARACTER,
+	HIT_CHARACTER,
+	DAMAGED_CHARACTER
 };
 
 class cCharactersInfo
@@ -107,27 +112,57 @@ public:
 /**
  * 
  */
-class SUNGMINWORLD_API ClientSocket
+class SUNGMINWORLD_API ClientSocket : public FRunnable
 {
 public:
-	ClientSocket();
-	~ClientSocket();
+	ClientSocket();	
+	virtual ~ClientSocket();
 
 	// 소켓 등록 및 설정
 	bool InitSocket();
 	// 서버와 연결
 	bool Connect(const char * pszIP, int nPort);
 	// 캐릭터 동기화
-	cCharactersInfo* SyncCharacters(cCharacter& info);
+	void SendCharacterInfo(cCharacter& info);
+	cCharactersInfo* RecvCharacterInfo(stringstream& RecvStream);
 	// 캐릭터 로그아웃
 	void LogoutCharacter(int SessionId);
-	char* UdpTest();
+	char* UdpTest();	
+
+	// 소켓이 속한 게임모드를 세팅해주는 함수
+	void SetGameMode(ASungminWorldGameMode* pGameMode);
+
+	void CloseSocket();
+
+	// FRunnable Thread members	
+	FRunnableThread* Thread;
+	FThreadSafeCounter StopTaskCounter;
+
+	// FRunnable override 함수
+	virtual bool Init();
+	virtual uint32 Run();
+	virtual void Stop();
+	virtual void Exit();
+
+	// 스레드 시작 및 종료
+	bool StartListen();
+	void StopListen();	
+
+	// 싱글턴 객체 가져오기
+	static ClientSocket* GetSingleton()
+	{
+		static ClientSocket ins;
+		return &ins;
+	}
 
 private:
 	SOCKET	ServerSocket;				// 서버와 연결할 소켓
 	SOCKET	UdpServerSocket;
-	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림
+	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림	
 	char UdpRecvBuffer[MAX_BUFFER];
 	cCharactersInfo CharactersInfo;		// 캐릭터 정보
 	SOCKADDR_IN	UdpServerAddr;
+	ASungminWorldGameMode* GameMode;	// 게임모드 정보
 };
+
+

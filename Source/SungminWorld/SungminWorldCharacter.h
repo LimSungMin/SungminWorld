@@ -40,7 +40,15 @@ public:
 
 	// 기분
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Properties")
-	float MoodValue;	
+	float MoodValue;
+
+	// 체력 업데이트
+	UFUNCTION(BlueprintCallable, Category = "Properties")
+	void UpdateHealth(float HealthChange);
+
+	// 체력 가져오기
+	UFUNCTION(BlueprintPure, Category = "Properties")
+	float GetHealth();
 
 protected:
 

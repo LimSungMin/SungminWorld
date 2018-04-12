@@ -15,6 +15,9 @@ class ASungminWorldGameMode : public AGameModeBase
 public:
 	ASungminWorldGameMode();
 
+	UFUNCTION(BlueprintCallable, Category = "Login")
+	bool LoginToServer(FString id);
+
 	virtual void Tick(float DeltaTime) override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -31,12 +34,19 @@ public:
 
 	// 스폰시킬 다른 캐릭터
 	UPROPERTY(EditAnywhere, Category = "Spawning")
-	TSubclassOf<class ACharacter> WhoToSpawn;
+	TSubclassOf<class ACharacter> WhoToSpawn;	
+
+	void DamagedCharacter(int SessionId);
+
+	void SyncCharactersInfo(cCharactersInfo * ci);
+
+	void TestDebug();
 
 private:
-	ClientSocket	Socket;			// 서버와 접속할 소켓
+	ClientSocket*	Socket;			// 서버와 접속할 소켓
 	bool			bIsConnected;	// 서버와 접속 유무
-	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)		
+	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)
+	cCharactersInfo * ci;
 };
 
 

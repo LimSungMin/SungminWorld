@@ -48,7 +48,7 @@ IOCompletionPort::~IOCompletionPort()
 	{
 		delete[] hWorkerHandle;
 		hWorkerHandle = NULL;
-	}
+	}	
 }
 
 bool IOCompletionPort::Initialize()
@@ -217,6 +217,54 @@ bool IOCompletionPort::CreateUdpThread()
 	return true;
 }
 
+void IOCompletionPort::Send(stSOCKETINFO * pSocket)
+{
+	int nResult;
+	DWORD	sendBytes;
+	DWORD	dwFlags = 0;
+
+	nResult = WSASend(
+		pSocket->socket,
+		&(pSocket->dataBuf),
+		1,
+		&sendBytes,
+		dwFlags,
+		NULL,
+		NULL
+	);
+
+	if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+	{
+		printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
+	}
+
+	// stSOCKETINFO 데이터 초기화
+	ZeroMemory(&(pSocket->overlapped), sizeof(OVERLAPPED));
+	ZeroMemory(pSocket->messageBuffer, MAX_BUFFER);
+	pSocket->dataBuf.len = MAX_BUFFER;
+	pSocket->dataBuf.buf = pSocket->messageBuffer;
+	pSocket->recvBytes = 0;
+	pSocket->sendBytes = 0;
+
+	dwFlags = 0;
+
+	// 클라이언트로부터 다시 응답을 받기 위해 WSARecv 를 호출해줌
+	nResult = WSARecv(
+		pSocket->socket,
+		&(pSocket->dataBuf),
+		1,
+		(LPDWORD)&pSocket,
+		&dwFlags,
+		(LPWSAOVERLAPPED)&(pSocket->overlapped),
+		NULL
+	);
+
+	if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+	{
+		printf_s("[ERROR] WSARecv 실패 : ", WSAGetLastError());
+	}
+}
+
 void IOCompletionPort::WorkerThread()
 {		
 	// 함수 호출 성공 여부
@@ -266,8 +314,7 @@ void IOCompletionPort::WorkerThread()
 		{			
 			int PacketType;			
 			// 클라이언트 정보 역직렬화
-			stringstream RecvStream;
-			stringstream SendStream;
+			stringstream RecvStream;			
 			
 			RecvStream << pSocketInfo->dataBuf.buf;
 			RecvStream >> PacketType;
@@ -276,7 +323,12 @@ void IOCompletionPort::WorkerThread()
 			{
 			case EPacketType::SEND_CHARACTER:
 			{
-				SyncCharacters(RecvStream, SendStream);
+				SyncCharacters(RecvStream, pSocketInfo);
+			}
+			break;
+			case EPacketType::HIT_CHARACTER:
+			{
+				HitCharacter(RecvStream, pSocketInfo);
 			}
 			break;
 			case EPacketType::LOGOUT_CHARACTER:
@@ -286,54 +338,9 @@ void IOCompletionPort::WorkerThread()
 			break;
 			default:
 				break;
-			}			
-			
-			// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음
-			CopyMemory(pSocketInfo->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
-			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer;
-			pSocketInfo->dataBuf.len = SendStream.str().length();			
-
-			// 다른 클라이언트의 정보를 송신			
-			nResult = WSASend(
-				pSocketInfo->socket,
-				&(pSocketInfo->dataBuf),
-				1,
-				&sendBytes,
-				dwFlags,
-				NULL,
-				NULL
-			);
-
-			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
-			{
-				printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
-			}
-
-			// stSOCKETINFO 데이터 초기화
-			ZeroMemory(&(pSocketInfo->overlapped), sizeof(OVERLAPPED));
-			ZeroMemory(pSocketInfo->messageBuffer, MAX_BUFFER);
-			pSocketInfo->dataBuf.len = MAX_BUFFER;
-			pSocketInfo->dataBuf.buf = pSocketInfo->messageBuffer; 			
- 			pSocketInfo->recvBytes = 0;
- 			pSocketInfo->sendBytes = 0;
- 			
-			dwFlags = 0;			
-
-			// 클라이언트로부터 다시 응답을 받기 위해 WSARecv 를 호출해줌
-			nResult = WSARecv(
-				pSocketInfo->socket,
-				&(pSocketInfo->dataBuf),
-				1,
-				&recvBytes,
-				&dwFlags,
-				(LPWSAOVERLAPPED)&(pSocketInfo->overlapped),
-				NULL
-			);
-
-			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
-			{
-				printf_s("[ERROR] WSARecv 실패 : ", WSAGetLastError());
-			}
+			}									
+				
+			Send(pSocketInfo);
 		}
 	}
 }
@@ -386,9 +393,10 @@ void IOCompletionPort::UdpThread()
 	}
 }
 
-void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stringstream& SendStream)
+void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
 {
 	cCharacter info;
+	stringstream SendStream;
 	RecvStream >> info;
 
 	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
@@ -402,10 +410,19 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stringstream& Se
 	// 캐릭터의 회전값을 저장
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
-	
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;		
+
+	// 세션 소켓 업데이트
+	SessionSocket[info.SessionId] = pSocket->socket;
+
 	// 직렬화	
-	SendStream << CharactersInfo;	
+	SendStream << EPacketType::RECV_CHARACTER << endl;
+	SendStream << CharactersInfo << endl;
+	
+	// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음
+	CopyMemory(pSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
+	pSocket->dataBuf.buf = pSocket->messageBuffer;
+	pSocket->dataBuf.len = SendStream.str().length();
 }
 
 void IOCompletionPort::LogoutCharacter(stringstream& RecvStream)
@@ -422,4 +439,23 @@ void IOCompletionPort::LogoutCharacter(stringstream& RecvStream)
 	CharactersInfo.WorldCharacterInfo[SessionId].Yaw = -1;
 	CharactersInfo.WorldCharacterInfo[SessionId].Pitch = -1;
 	CharactersInfo.WorldCharacterInfo[SessionId].Roll = -1;
+}
+
+void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
+{
+	stringstream SendStream;
+	SendStream << EPacketType::DAMAGED_CHARACTER << endl;
+
+	int DamagedSessionId;
+	RecvStream >> DamagedSessionId;
+
+	stSOCKETINFO * DamagedSocket = new stSOCKETINFO;
+	// DamagedSocket->socket = SessionSocket[DamagedSessionId];
+	DamagedSocket->socket = SessionSocket[10];
+	
+	CopyMemory(DamagedSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
+	DamagedSocket->dataBuf.buf = DamagedSocket->messageBuffer;
+	DamagedSocket->dataBuf.len = SendStream.str().length();
+
+	Send(DamagedSocket);
 }

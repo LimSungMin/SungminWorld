@@ -22,28 +22,42 @@ ASungminWorldGameMode::ASungminWorldGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 
 	// 세션 아이디 지정 (지금은 랜덤값)
-	SessionId = FMath::RandRange(0, 100);
+	SessionId = FMath::RandRange(0, 100);	
 
 	// 서버와 연결
-	Socket.InitSocket();
-	bIsConnected = Socket.Connect("127.0.0.1", 8000);
+	Socket = ClientSocket::GetSingleton();
+	Socket->InitSocket();
+	bIsConnected = Socket->Connect("127.0.0.1", 8000);
 	if (bIsConnected)
 	{
 		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
+		Socket->SetGameMode(this);
+		
+		// Socket.RecvThread();		
 	}
+}
+
+bool ASungminWorldGameMode::LoginToServer(FString id)
+{
+	if (!id.IsEmpty())
+	{
+		UE_LOG(LogClass, Log, TEXT("Login Success"));
+		return true;
+	}
+	UE_LOG(LogClass, Log, TEXT("Login Fail"));
+	return false;
 }
 
 void ASungminWorldGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 	if (!bIsConnected)
 		return;
-	// UE_LOG(LogClass, Log, TEXT("TEST"));
 	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
-	if (!Player) 
+	if (!Player)
 		return;	
-	// UE_LOG(LogClass, Log, TEXT("%f"), PlayerLocation.X);
-	
+
 	// 플레이어의 위치를 가져옴	
 	auto MyLocation = Player->GetActorLocation();
 	auto MyRotation = Player->GetActorRotation();
@@ -57,14 +71,14 @@ void ASungminWorldGameMode::Tick(float DeltaTime)
 	Character.Pitch = MyRotation.Pitch;
 	Character.Roll = MyRotation.Roll;
 
-	// 플레이어의 세션 아이디와 위치를 서버에게 보냄
-	cCharactersInfo* ci = Socket.SyncCharacters(Character);
-	if (ci == nullptr)
-		return;
-
+	Socket->SendCharacterInfo(Character);
+		
 	UWorld* const world = GetWorld();
 	if (world == nullptr)
 		return;
+		
+	if (ci == nullptr)
+		return;	
 
 	// 월드 내 OtherCharacter 액터 수집
 	TArray<AActor*> SpawnedCharacters;
@@ -116,6 +130,7 @@ void ASungminWorldGameMode::Tick(float DeltaTime)
 			}
 		}
 	}
+	
 }
 
 void ASungminWorldGameMode::BeginPlay()
@@ -130,13 +145,16 @@ void ASungminWorldGameMode::BeginPlay()
 			CurrentWidget->AddToViewport();
 		}
 	}
+	// Recv 스레드 시작
+	Socket->StartListen();
 }
 
 void ASungminWorldGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-
-	Socket.LogoutCharacter(SessionId);
+	Socket->LogoutCharacter(SessionId);
+	Socket->CloseSocket();	
+	Socket->StopListen();	
 }
 
 AActor * ASungminWorldGameMode::FindActorBySessionId(TArray<AActor*> ActorArray, const int & SessionId)
@@ -147,4 +165,19 @@ AActor * ASungminWorldGameMode::FindActorBySessionId(TArray<AActor*> ActorArray,
 			return Actor;
 	}
 	return nullptr;
+}
+
+void ASungminWorldGameMode::DamagedCharacter(int SessionId)
+{
+	UE_LOG(LogClass, Log, TEXT("Damaged Called %d"), SessionId);
+}
+
+void ASungminWorldGameMode::SyncCharactersInfo(cCharactersInfo * ci_)
+{	
+	ci = ci_;	
+}
+
+void ASungminWorldGameMode::TestDebug()
+{
+	UE_LOG(LogClass, Log, TEXT("DEBUGGING"));
 }

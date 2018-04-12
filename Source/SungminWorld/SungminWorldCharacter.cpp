@@ -9,6 +9,8 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Classes/Components/SphereComponent.h"
+#include "OtherNetworkCharacter.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -103,6 +105,16 @@ void ASungminWorldCharacter::Jump()
 	}	
 }
 
+void ASungminWorldCharacter::UpdateHealth(float HealthChange)
+{
+	HealthValue += HealthChange;
+}
+
+float ASungminWorldCharacter::GetHealth()
+{
+	return HealthValue;
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
@@ -120,7 +132,28 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 
 void ASungminWorldCharacter::HitOtherCharacter()
 {
+	UE_LOG(LogClass, Log, TEXT("Hit called"));	
+	TArray<UActorComponent*> Comps;
+	TArray<AActor*> NearCharacters;
+	this->GetComponents(Comps);
+	for (auto Comp : Comps)
+	{
+		USphereComponent* HitSphere = Cast<USphereComponent>(Comp);
+		if (HitSphere)
+		{
+			HitSphere->GetOverlappingActors(NearCharacters);
+			break;
+		}
+	}
 
+	for (auto Character : NearCharacters)
+	{
+		AOtherNetworkCharacter * cha = Cast<AOtherNetworkCharacter>(Character);
+		if (cha)
+		{
+			cha->Destroy();
+		}
+	}
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)
