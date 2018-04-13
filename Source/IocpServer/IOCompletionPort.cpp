@@ -29,7 +29,10 @@ IOCompletionPort::IOCompletionPort()
 		CharactersInfo.WorldCharacterInfo[i].X = -1;
 		CharactersInfo.WorldCharacterInfo[i].Y= -1;
 		CharactersInfo.WorldCharacterInfo[i].Z= -1;
+		CharactersInfo.WorldCharacterInfo[i].IsAlive = false;
 	}	
+
+	HitPoint = 0.1f;
 }
 
 
@@ -321,6 +324,11 @@ void IOCompletionPort::WorkerThread()
 
 			switch (PacketType)
 			{
+			case EPacketType::ENROLL_CHARACTER:
+			{
+				EnrollCharacter(RecvStream, pSocketInfo);
+			}
+				break;
 			case EPacketType::SEND_CHARACTER:
 			{
 				SyncCharacters(RecvStream, pSocketInfo);
@@ -333,7 +341,7 @@ void IOCompletionPort::WorkerThread()
 			break;
 			case EPacketType::LOGOUT_CHARACTER:
 			{
-				LogoutCharacter(RecvStream);
+				LogoutCharacter(RecvStream, pSocketInfo);
 			}
 			break;
 			default:
@@ -393,14 +401,36 @@ void IOCompletionPort::UdpThread()
 	}
 }
 
-void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
+void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
 {
 	cCharacter info;
-	stringstream SendStream;
 	RecvStream >> info;
 
-	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
-		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
+	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
+		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);
+
+	// 캐릭터의 위치를 저장						
+	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].X = info.X;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Y = info.Y;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Z = info.Z;
+	// 캐릭터의 회전값을 저장
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
+	// 캐릭터 속성
+	CharactersInfo.WorldCharacterInfo[info.SessionId].IsAlive = info.IsAlive;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].HealthValue = info.HealthValue;
+
+}
+
+void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
+{
+	cCharacter info;	
+	RecvStream >> info;
+
+// 	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
+// 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
 	
 	// 캐릭터의 위치를 저장						
 	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
@@ -412,50 +442,46 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;		
 
-	// 세션 소켓 업데이트
-	SessionSocket[info.SessionId] = pSocket->socket;
+	WriteCharactersInfoToSocket(pSocket);
+}
+
+void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket)
+{
+	int SessionId;
+	RecvStream >> SessionId;
+	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);	
+
+	CharactersInfo.WorldCharacterInfo[SessionId].IsAlive = false;
+
+	WriteCharactersInfoToSocket(pSocket);
+}
+
+void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
+{	
+	// 피격 처리된 세션 아이디
+	int DamagedSessionId;
+	RecvStream >> DamagedSessionId;
+
+	CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue -= HitPoint;
+	if (CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue < 0)
+	{
+		// 캐릭터 사망처리
+		CharactersInfo.WorldCharacterInfo[DamagedSessionId].IsAlive = false;
+	}	
+
+	WriteCharactersInfoToSocket(pSocket);
+}
+
+void IOCompletionPort::WriteCharactersInfoToSocket(stSOCKETINFO * pSocket)
+{
+	stringstream SendStream;
 
 	// 직렬화	
 	SendStream << EPacketType::RECV_CHARACTER << endl;
 	SendStream << CharactersInfo << endl;
-	
+
 	// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음
 	CopyMemory(pSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
 	pSocket->dataBuf.buf = pSocket->messageBuffer;
 	pSocket->dataBuf.len = SendStream.str().length();
-}
-
-void IOCompletionPort::LogoutCharacter(stringstream& RecvStream)
-{
-	int SessionId;
-	RecvStream >> SessionId;
-	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);
-
-	// CharactersInfo.WorldCharacterInfo[SessionId].SessionId = -1;
-	CharactersInfo.WorldCharacterInfo[SessionId].X = -1;
-	CharactersInfo.WorldCharacterInfo[SessionId].Y = -1;
-	CharactersInfo.WorldCharacterInfo[SessionId].Z = -1;
-	// 캐릭터의 회전값을 저장
-	CharactersInfo.WorldCharacterInfo[SessionId].Yaw = -1;
-	CharactersInfo.WorldCharacterInfo[SessionId].Pitch = -1;
-	CharactersInfo.WorldCharacterInfo[SessionId].Roll = -1;
-}
-
-void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
-{
-	stringstream SendStream;
-	SendStream << EPacketType::DAMAGED_CHARACTER << endl;
-
-	int DamagedSessionId;
-	RecvStream >> DamagedSessionId;
-
-	stSOCKETINFO * DamagedSocket = new stSOCKETINFO;
-	// DamagedSocket->socket = SessionSocket[DamagedSessionId];
-	DamagedSocket->socket = SessionSocket[10];
-	
-	CopyMemory(DamagedSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
-	DamagedSocket->dataBuf.buf = DamagedSocket->messageBuffer;
-	DamagedSocket->dataBuf.len = SendStream.str().length();
-
-	Send(DamagedSocket);
 }

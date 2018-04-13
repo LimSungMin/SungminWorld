@@ -14,11 +14,12 @@ using namespace std;
 
 enum COMMONCLASS_API EPacketType
 {
+	ENROLL_CHARACTER,
 	SEND_CHARACTER,
 	RECV_CHARACTER,
 	LOGOUT_CHARACTER,
 	HIT_CHARACTER,
-	DAMAGED_CHARACTER
+	DAMAGED_CHARACTER	
 };
 
 class COMMONCLASS_API cCharacter {
@@ -27,15 +28,20 @@ public:
 	~cCharacter();
 
 	// 세션 아이디
-	int SessionId;
+	int		SessionId;
 	// 위치
-	float X;
-	float Y;
-	float Z;
+	float	X;
+	float	Y;
+	float	Z;
 	// 회전값
-	float Yaw;
-	float Pitch;
-	float Roll;
+	float	Yaw;
+	float	Pitch;
+	float	Roll;
+	// 속성
+	bool	IsAlive;
+	bool	IsJumping;
+	float	HealthValue;
+
 
 	friend ostream& operator<<(ostream &stream, cCharacter& info)
 	{
@@ -46,6 +52,9 @@ public:
 		stream << info.Yaw << endl;
 		stream << info.Pitch << endl;
 		stream << info.Roll << endl;
+		stream << info.IsAlive << endl;
+		stream << info.IsJumping << endl;
+		stream << info.HealthValue << endl;
 
 		return stream;
 	}
@@ -59,6 +68,9 @@ public:
 		stream >> info.Yaw;
 		stream >> info.Pitch;
 		stream >> info.Roll;
+		stream >> info.IsAlive;
+		stream >> info.IsJumping;
+		stream >> info.HealthValue;
 
 		return stream;
 	}

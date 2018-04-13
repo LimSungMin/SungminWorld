@@ -10,6 +10,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Classes/Components/SphereComponent.h"
 #include "OtherNetworkCharacter.h"
+#include "Engine/World.h"
+#include "SungminWorldGameMode.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -53,6 +55,8 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	HealthValue = 0.5f;
 	EnergyValue = 0.5f;
 	MoodValue = 0.5f;	
+
+	bIsAlive = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -115,6 +119,11 @@ float ASungminWorldCharacter::GetHealth()
 	return HealthValue;
 }
 
+bool ASungminWorldCharacter::IsAlive()
+{
+	return bIsAlive;
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
@@ -148,12 +157,14 @@ void ASungminWorldCharacter::HitOtherCharacter()
 
 	for (auto Character : NearCharacters)
 	{
-		AOtherNetworkCharacter * cha = Cast<AOtherNetworkCharacter>(Character);
-		if (cha)
-		{
-			cha->Destroy();
+		AOtherNetworkCharacter * OtherCharacter = Cast<AOtherNetworkCharacter>(Character);
+		if (OtherCharacter)
+		{	
+			ASungminWorldGameMode* GameMode = (ASungminWorldGameMode*)GetWorld()->GetAuthGameMode();
+
+			GameMode->HitCharacter(FCString::Atoi(*OtherCharacter->GetName()), OtherCharacter);			
 		}
-	}
+	}	
 }
 
 void ASungminWorldCharacter::TurnAtRate(float Rate)

@@ -71,6 +71,25 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
+void ClientSocket::EnrollCharacterInfo(cCharacter & info)
+{
+	// 캐릭터 정보 직렬화
+	stringstream SendStream;
+	// 요청 종류
+	SendStream << EPacketType::ENROLL_CHARACTER << endl;;
+	SendStream << info;
+
+	// 캐릭터 정보 전송
+	int nSendLen = send(
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
+	);
+
+	if (nSendLen == -1)
+	{
+		return;
+	}
+}
+
 void ClientSocket::SendCharacterInfo(cCharacter& info)
 {	
 	// 캐릭터 정보 직렬화
@@ -87,25 +106,7 @@ void ClientSocket::SendCharacterInfo(cCharacter& info)
 	if (nSendLen == -1)
 	{
 		return;
-	}
-		
-	/*// 서버응답 수신
-	int nRecvLen = recv(
-		ServerSocket, (CHAR*)&recvBuffer, MAX_BUFFER, 0
-	);
-
-	if (nRecvLen == -1)
-	{
-		return nullptr;
-	}
-	else {		
-		// 역직렬화
-		stringstream RecvStream;
-		RecvStream << recvBuffer;
-		RecvStream >> CharactersInfo;
-
-		return &CharactersInfo;
-	}		*/		
+	}		
 }
 
 cCharactersInfo * ClientSocket::RecvCharacterInfo(stringstream & RecvStream)
@@ -152,6 +153,17 @@ char* ClientSocket::UdpTest()
 	return UdpRecvBuffer;
 }
 
+void ClientSocket::DamagingCharacter(int SessionId)
+{
+	stringstream SendStream;
+	SendStream << EPacketType::HIT_CHARACTER << endl;
+	SendStream << SessionId << endl;
+
+	int nSendLen = send(
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
+	);
+}
+
 
 void ClientSocket::SetGameMode(ASungminWorldGameMode * pGameMode)
 {
@@ -195,11 +207,11 @@ uint32 ClientSocket::Run()
 
 			switch (PacketType)
 			{
-			case EPacketType::DAMAGED_CHARACTER:
-			{
-
-			}
-			break;
+// 			case EPacketType::DAMAGED_CHARACTER:
+// 			{
+// 				LocalGameMode->DamagedCharacter();
+// 			}
+// 			break;
 			case EPacketType::RECV_CHARACTER:
 			{
 				LocalGameMode->SyncCharactersInfo(RecvCharacterInfo(RecvStream));
@@ -236,6 +248,7 @@ void ClientSocket::StopListen()
 	// 스레드 종료
 	Stop();
 	Thread->WaitForCompletion();
+	Thread->Kill();	
 	delete Thread;
 	Thread = nullptr;	
 	StopTaskCounter.Reset();

@@ -5,7 +5,6 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
-#include "OtherNetworkCharacter.h"
 #include <string>
 
 ASungminWorldGameMode::ASungminWorldGameMode()
@@ -32,8 +31,6 @@ ASungminWorldGameMode::ASungminWorldGameMode()
 	{
 		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
 		Socket->SetGameMode(this);
-		
-		// Socket.RecvThread();		
 	}
 }
 
@@ -52,85 +49,11 @@ void ASungminWorldGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!bIsConnected)
-		return;
-	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
-	if (!Player)
-		return;	
+	if (!bIsConnected) return;
 
-	// 플레이어의 위치를 가져옴	
-	auto MyLocation = Player->GetActorLocation();
-	auto MyRotation = Player->GetActorRotation();
-
-	cCharacter Character;
-	Character.SessionId = SessionId;
-	Character.X = MyLocation.X;
-	Character.Y = MyLocation.Y;
-	Character.Z = MyLocation.Z;
-	Character.Yaw = MyRotation.Yaw;
-	Character.Pitch = MyRotation.Pitch;
-	Character.Roll = MyRotation.Roll;
-
-	Socket->SendCharacterInfo(Character);
+	if (!SendPlayerInfo()) return;
 		
-	UWorld* const world = GetWorld();
-	if (world == nullptr)
-		return;
-		
-	if (ci == nullptr)
-		return;	
-
-	// 월드 내 OtherCharacter 액터 수집
-	TArray<AActor*> SpawnedCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
-	
-	for (int i = 0; i < MAX_CLIENTS; i++)
-	{
-		int CharacterSessionId = ci->WorldCharacterInfo[i].SessionId;
-		// 유효한 세션 아이디면서 플레이어의 세션아이디가 아닐때
-		if (CharacterSessionId != -1 && CharacterSessionId != SessionId && ci->WorldCharacterInfo[i].X != -1)
-		{
-			// 월드내 해당 세션 아이디와 매칭되는 Actor 검색			
-			auto Actor = FindActorBySessionId(SpawnedCharacters, CharacterSessionId);
-			// 해당되는 세션 아이디가 없을 시 월드에 스폰
-			if (Actor == nullptr)
-			{
-				FVector SpawnLocation;
-				SpawnLocation.X = ci->WorldCharacterInfo[i].X;
-				SpawnLocation.Y = ci->WorldCharacterInfo[i].Y;
-				SpawnLocation.Z = ci->WorldCharacterInfo[i].Z;
-
-				FRotator SpawnRotation;
-				SpawnRotation.Yaw = ci->WorldCharacterInfo[i].Yaw;
-				SpawnRotation.Pitch = ci->WorldCharacterInfo[i].Pitch;
-				SpawnRotation.Roll = ci->WorldCharacterInfo[i].Roll;
-
-				FActorSpawnParameters SpawnParams;
-				SpawnParams.Owner = this;
-				SpawnParams.Instigator = Instigator;
-				SpawnParams.Name = FName(*FString(to_string(ci->WorldCharacterInfo[i].SessionId).c_str()));
-
-				ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
-			}
-			// 해당되는 세션 아이다가 있으면 위치 동기화
-			else
-			{
-				FVector CharacterLocation;
-				CharacterLocation.X = ci->WorldCharacterInfo[CharacterSessionId].X;
-				CharacterLocation.Y = ci->WorldCharacterInfo[CharacterSessionId].Y;
-				CharacterLocation.Z = ci->WorldCharacterInfo[CharacterSessionId].Z;
-
-				FRotator CharacterRotation;
-				CharacterRotation.Yaw = ci->WorldCharacterInfo[CharacterSessionId].Yaw;
-				CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
-				CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
-
-				Actor->SetActorLocation(CharacterLocation);
-				Actor->SetActorRotation(CharacterRotation);
-			}
-		}
-	}
-	
+	if (!SynchronizeWorld()) return;	
 }
 
 void ASungminWorldGameMode::BeginPlay()
@@ -145,6 +68,28 @@ void ASungminWorldGameMode::BeginPlay()
 			CurrentWidget->AddToViewport();
 		}
 	}
+	// 캐릭터 등록
+	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	if (!Player)
+		return;
+
+	auto MyLocation = Player->GetActorLocation();
+	auto MyRotation = Player->GetActorRotation();
+
+	cCharacter Character;
+	// 위치
+	Character.SessionId = SessionId;
+	Character.X = MyLocation.X;
+	Character.Y = MyLocation.Y;
+	Character.Z = MyLocation.Z;
+	Character.Yaw = MyRotation.Yaw;
+	Character.Pitch = MyRotation.Pitch;
+	Character.Roll = MyRotation.Roll;
+	// 속성
+	Character.IsAlive = true;
+	Character.HealthValue = Player->GetHealth();
+	Socket->EnrollCharacterInfo(Character);
+
 	// Recv 스레드 시작
 	Socket->StartListen();
 }
@@ -167,9 +112,18 @@ AActor * ASungminWorldGameMode::FindActorBySessionId(TArray<AActor*> ActorArray,
 	return nullptr;
 }
 
-void ASungminWorldGameMode::DamagedCharacter(int SessionId)
+void ASungminWorldGameMode::HitCharacter(const int& SessionId, const AOtherNetworkCharacter* DamagedCharacter)
 {
 	UE_LOG(LogClass, Log, TEXT("Damaged Called %d"), SessionId);
+	
+	UWorld* const world = GetWorld();
+
+	FTransform transform(DamagedCharacter->GetActorLocation());
+	UGameplayStatics::SpawnEmitterAtLocation(
+		world, HitEmiiter, transform, true
+	);
+
+	Socket->DamagingCharacter(SessionId);
 }
 
 void ASungminWorldGameMode::SyncCharactersInfo(cCharactersInfo * ci_)
@@ -180,4 +134,143 @@ void ASungminWorldGameMode::SyncCharactersInfo(cCharactersInfo * ci_)
 void ASungminWorldGameMode::TestDebug()
 {
 	UE_LOG(LogClass, Log, TEXT("DEBUGGING"));
+}
+
+bool ASungminWorldGameMode::SendPlayerInfo()
+{
+	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	if (!Player)
+		return false;
+
+	// 플레이어의 위치를 가져옴	
+	auto MyLocation = Player->GetActorLocation();
+	auto MyRotation = Player->GetActorRotation();
+
+	cCharacter Character;
+	Character.SessionId = SessionId;
+	Character.X = MyLocation.X;
+	Character.Y = MyLocation.Y;
+	Character.Z = MyLocation.Z;
+	Character.Yaw = MyRotation.Yaw;
+	Character.Pitch = MyRotation.Pitch;
+	Character.Roll = MyRotation.Roll;
+
+	Socket->SendCharacterInfo(Character);
+
+	return true;
+}
+
+bool ASungminWorldGameMode::SynchronizeWorld()
+{
+	UWorld* const world = GetWorld();
+	if (world == nullptr)
+		return false;
+
+	if (ci == nullptr)
+		return false;
+
+	// 월드 내 OtherCharacter 액터 수집
+	TArray<AActor*> SpawnedCharacters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		int CharacterSessionId = ci->WorldCharacterInfo[i].SessionId;
+		// 플레이어 처리
+		if (CharacterSessionId == SessionId)
+		{			
+			SynchronizePlayer(ci->WorldCharacterInfo[i]);
+			continue;
+		}
+		// 다른 네트워크 캐릭터 처리
+		if (CharacterSessionId != -1)
+		{
+			// 월드내 해당 세션 아이디와 매칭되는 Actor 검색			
+			auto Actor = FindActorBySessionId(SpawnedCharacters, CharacterSessionId);
+			// 해당되는 세션 아이디가 없을 시 월드에 스폰
+			if (Actor == nullptr && ci->WorldCharacterInfo[i].IsAlive == true)
+			{
+				FVector SpawnLocation;
+				SpawnLocation.X = ci->WorldCharacterInfo[i].X;
+				SpawnLocation.Y = ci->WorldCharacterInfo[i].Y;
+				SpawnLocation.Z = ci->WorldCharacterInfo[i].Z;
+
+				FRotator SpawnRotation;
+				SpawnRotation.Yaw = ci->WorldCharacterInfo[i].Yaw;
+				SpawnRotation.Pitch = ci->WorldCharacterInfo[i].Pitch;
+				SpawnRotation.Roll = ci->WorldCharacterInfo[i].Roll;
+
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = this;
+				SpawnParams.Instigator = Instigator;
+				SpawnParams.Name = FName(*FString(to_string(ci->WorldCharacterInfo[i].SessionId).c_str()));
+
+				ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+			}
+			// 해당되는 세션 아이다가 있으면 위치 동기화
+			else if (Actor != nullptr && ci->WorldCharacterInfo[i].IsAlive == true)
+			{
+				AOtherNetworkCharacter* OtherCharacter = Cast<AOtherNetworkCharacter>(Actor);
+				if (OtherCharacter)
+				{
+					if (OtherCharacter->HealthValue != ci->WorldCharacterInfo[i].HealthValue)
+					{
+						// spawn damaged emitter
+						FTransform transform(OtherCharacter->GetActorLocation());
+						UGameplayStatics::SpawnEmitterAtLocation(
+							world, HitEmiiter, transform, true
+						);
+					}
+					OtherCharacter->HealthValue = ci->WorldCharacterInfo[i].HealthValue;
+
+					FVector CharacterLocation;
+					CharacterLocation.X = ci->WorldCharacterInfo[CharacterSessionId].X;
+					CharacterLocation.Y = ci->WorldCharacterInfo[CharacterSessionId].Y;
+					CharacterLocation.Z = ci->WorldCharacterInfo[CharacterSessionId].Z;
+
+					FRotator CharacterRotation;
+					CharacterRotation.Yaw = ci->WorldCharacterInfo[CharacterSessionId].Yaw;
+					CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
+					CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
+
+					OtherCharacter->SetActorLocation(CharacterLocation);
+					OtherCharacter->SetActorRotation(CharacterRotation);
+				}				
+			}
+			else if (Actor != nullptr && ci->WorldCharacterInfo[i].IsAlive == false)
+			{
+				UE_LOG(LogClass, Log, TEXT("Destroy Actor"));
+				FTransform transform(Actor->GetActorLocation());
+				UGameplayStatics::SpawnEmitterAtLocation(
+					world, DestroyEmiiter, transform, true
+				);
+				Actor->Destroy();
+			}
+		}
+	}
+	return true;
+}
+
+void ASungminWorldGameMode::SynchronizePlayer(const cCharacter & info)
+{
+	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	UWorld* const world = GetWorld();
+
+	if (!info.IsAlive)
+	{
+		FTransform transform(Player->GetActorLocation());
+		UGameplayStatics::SpawnEmitterAtLocation(
+			world, DestroyEmiiter, transform, true
+		);
+		Player->Destroy();
+	}
+	// 캐릭터 속성 업데이트
+	if (Player->HealthValue != info.HealthValue)
+	{
+		FTransform transform(Player->GetActorLocation());
+		UGameplayStatics::SpawnEmitterAtLocation(
+			world, HitEmiiter, transform, true
+		);
+	}
+	Player->HealthValue = info.HealthValue;
 }

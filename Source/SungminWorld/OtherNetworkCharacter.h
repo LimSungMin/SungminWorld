@@ -13,7 +13,6 @@ UCLASS()
 class SUNGMINWORLD_API AOtherNetworkCharacter : public ASungminWorldCharacter
 {
 	GENERATED_BODY()
-			
-	
+public:	
 	
 };

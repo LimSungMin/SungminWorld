@@ -50,6 +50,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Properties")
 	float GetHealth();
 
+	UFUNCTION(BlueprintPure, Category = "Properties")
+	bool IsAlive();
+
 protected:
 
 	/** Resets HMD orientation in VR. */
@@ -94,5 +97,6 @@ public:
 private:	
 	// 플레이어 캐릭터 점프
 	void Jump();
+	bool bIsAlive;
 };
 

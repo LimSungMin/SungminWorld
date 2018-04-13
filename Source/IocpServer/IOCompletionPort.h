@@ -42,10 +42,12 @@ public:
 	// 작업 스레드
 	void WorkerThread();
 	void UdpThread();
+	// 캐릭터 초기 등록
+	void EnrollCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 위치 동기화
 	void SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 로그아웃 처리
-	void LogoutCharacter(stringstream& RecvStream);
+	void LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 피격 처리
 	void HitCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 
@@ -60,4 +62,7 @@ private:
 	HANDLE *		hUdpHandle;
 	cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
 	map<int, SOCKET> SessionSocket;
+	float			HitPoint;		// 타격 데미지
+
+	void WriteCharactersInfoToSocket(stSOCKETINFO* pSocket);
 };
