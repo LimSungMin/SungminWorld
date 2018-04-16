@@ -1,13 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ClientSocket.h"
-#include "SungminWorldGameMode.h"
 #include <sstream>
-#include <process.h>
 #include "Runtime/Core/Public/GenericPlatform/GenericPlatformAffinity.h"
 #include "Runtime/Core/Public/HAL/RunnableThread.h"
 #include <algorithm>
 #include <string>
+#include "SungminPlayerController.h"
 
 ClientSocket::ClientSocket()
 	:StopTaskCounter(0)
@@ -113,12 +112,14 @@ void ClientSocket::SendCharacterInfo(cCharacter& info)
 
 cCharactersInfo * ClientSocket::RecvCharacterInfo(stringstream & RecvStream)
 {	
+	// 서버에서 캐릭터 정보를 얻어 반환
 	RecvStream >> CharactersInfo;
 	return &CharactersInfo;		
 }
 
 string * ClientSocket::RecvChat(stringstream & RecvStream)
 {	
+	// 서버에서 채팅 정보를 얻어 반환
 	RecvStream >> sChat;
 	std::replace(sChat.begin(), sChat.end(), '_', ' ');
 	return &sChat;
@@ -126,6 +127,7 @@ string * ClientSocket::RecvChat(stringstream & RecvStream)
 
 void ClientSocket::LogoutCharacter(int SessionId)
 {
+	// 서버에게 로그아웃시킬 캐릭터 정보 전송
 	stringstream SendStream;
 	SendStream << EPacketType::LOGOUT_CHARACTER << endl;
 	SendStream << SessionId << endl;
@@ -164,6 +166,7 @@ char* ClientSocket::UdpTest()
 
 void ClientSocket::DamagingCharacter(int SessionId)
 {
+	// 서버에게 데미지를 준 캐릭터 정보 전송
 	stringstream SendStream;
 	SendStream << EPacketType::HIT_CHARACTER << endl;
 	SendStream << SessionId << endl;
@@ -175,6 +178,7 @@ void ClientSocket::DamagingCharacter(int SessionId)
 
 void ClientSocket::SendChat(const int& SessionId, const string & Chat)
 {
+	// 서버에게 채팅 전송
 	stringstream SendStream;
 	SendStream << EPacketType::CHAT << endl;
 	SendStream << SessionId << endl;
@@ -185,10 +189,13 @@ void ClientSocket::SendChat(const int& SessionId, const string & Chat)
 	);
 }
 
-
-void ClientSocket::SetGameMode(ASungminWorldGameMode * pGameMode)
+void ClientSocket::SetPlayerController(ASungminPlayerController * pPlayerController)
 {
-	GameMode = pGameMode;
+	// 플레이어 컨트롤러 세팅
+	if (pPlayerController)
+	{
+		PlayerController = pPlayerController;
+	}
 }
 
 void ClientSocket::CloseSocket()
@@ -205,16 +212,10 @@ bool ClientSocket::Init()
 uint32 ClientSocket::Run()
 {
 	// 초기 init 과정을 기다림
-	FPlatformProcess::Sleep(0.03);
-	// 게임모드를 가져옴
-	ASungminWorldGameMode * LocalGameMode = nullptr;
-	if (GameMode != nullptr)
-	{
-		LocalGameMode = GameMode;
-	}
+	FPlatformProcess::Sleep(0.03);	
 	// recv while loop 시작
 	// StopTaskCounter 클래스 변수를 사용해 Thread Safety하게 해줌
-	while (StopTaskCounter.GetValue() == 0 && LocalGameMode != nullptr)
+	while (StopTaskCounter.GetValue() == 0 && PlayerController != nullptr)
 	{
 		stringstream RecvStream;
 		int PacketType;
@@ -230,12 +231,12 @@ uint32 ClientSocket::Run()
 			{
 			case EPacketType::RECV_CHARACTER:
 			{
-				LocalGameMode->SyncCharactersInfo(RecvCharacterInfo(RecvStream));
+				PlayerController->RecvWorldInfo(RecvCharacterInfo(RecvStream));
 			}
 			break;
 			case EPacketType::CHAT:
 			{
-				LocalGameMode->SynchronizeChat(RecvChat(RecvStream));
+				PlayerController->RecvChat(RecvChat(RecvStream));
 			}
 			break;
 			default:

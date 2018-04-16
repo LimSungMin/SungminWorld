@@ -11,7 +11,7 @@
 #include "Classes/Components/SphereComponent.h"
 #include "OtherNetworkCharacter.h"
 #include "Engine/World.h"
-#include "SungminWorldGameMode.h"
+#include "SungminPlayerController.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// 체력, 에너지, 기분 기정
 	HealthValue = 0.5f;
 	EnergyValue = 0.5f;
-	MoodValue = 0.5f;	
+	MoodValue = 0.5f;
 
 	bIsAlive = true;
 }
@@ -140,8 +140,8 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 }
 
 void ASungminWorldCharacter::HitOtherCharacter()
-{
-	UE_LOG(LogClass, Log, TEXT("Hit called"));	
+{	
+	// Sphere 내 다른 캐릭터의 목록을 가져온다
 	TArray<UActorComponent*> Comps;
 	TArray<AActor*> NearCharacters;
 	this->GetComponents(Comps);
@@ -155,14 +155,15 @@ void ASungminWorldCharacter::HitOtherCharacter()
 		}
 	}
 
+	// 오버래핑된 캐릭터들에게 Hit 이벤트를 작동한다
 	for (auto Character : NearCharacters)
 	{
 		AOtherNetworkCharacter * OtherCharacter = Cast<AOtherNetworkCharacter>(Character);
 		if (OtherCharacter)
-		{	
-			ASungminWorldGameMode* GameMode = (ASungminWorldGameMode*)GetWorld()->GetAuthGameMode();
+		{				
+			ASungminPlayerController* PlayerController = Cast<ASungminPlayerController>(GetWorld()->GetFirstPlayerController());
 
-			GameMode->HitCharacter(FCString::Atoi(*OtherCharacter->GetName()), OtherCharacter);			
+			PlayerController->HitCharacter(FCString::Atoi(*OtherCharacter->GetName()), OtherCharacter);
 		}
 	}	
 }

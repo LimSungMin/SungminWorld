@@ -11,6 +11,7 @@
 #include "Runtime/Core/Public/HAL/Runnable.h"
 
 class ASungminWorldGameMode;
+class ASungminPlayerController;
 
 using namespace std;
 
@@ -171,10 +172,10 @@ public:
 	void SendChat(const int& SessionId, const string& Chat);
 	// UDP 테스트용 함수
 	char* UdpTest();
-	//////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////	
 
-	// 소켓이 속한 게임모드를 세팅해주는 함수
-	void SetGameMode(ASungminWorldGameMode* pGameMode);
+	// 플레이어 컨트롤러 세팅
+	void SetPlayerController(ASungminPlayerController* pPlayerController);
 
 	void CloseSocket();
 
@@ -205,8 +206,8 @@ private:
 	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림	
 	char UdpRecvBuffer[MAX_BUFFER];
 	cCharactersInfo CharactersInfo;		// 캐릭터 정보
-	SOCKADDR_IN	UdpServerAddr;
-	ASungminWorldGameMode* GameMode;	// 게임모드 정보
+	SOCKADDR_IN	UdpServerAddr;	
+	ASungminPlayerController* PlayerController;	// 플레이어 컨트롤러 정보
 
 	string sChat;
 	char testChat[MAX_BUFFER];

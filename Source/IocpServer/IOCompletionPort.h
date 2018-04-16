@@ -42,7 +42,9 @@ public:
 	bool CreateWorkerThread();
 	bool CreateUdpThread();
 	
+	// 클라이언트에게 송신
 	void Send(stSOCKETINFO* pSocket);
+	// 클라이언트 수신 대기
 	void Recv(stSOCKETINFO* pSocket);
 
 	// 작업 스레드
