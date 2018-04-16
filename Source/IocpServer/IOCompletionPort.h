@@ -1,8 +1,13 @@
 #pragma once
+
+// 멀티바이트 집합 사용시 define
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 // winsock2 사용을 위해 아래 코멘트 추가
 #pragma comment(lib, "ws2_32.lib")
 #include <WinSock2.h>
 #include <map>
+#include <vector>
 #include <iostream>
 #include "CommonClass.h"
 
@@ -38,6 +43,7 @@ public:
 	bool CreateUdpThread();
 	
 	void Send(stSOCKETINFO* pSocket);
+	void Recv(stSOCKETINFO* pSocket);
 
 	// 작업 스레드
 	void WorkerThread();
@@ -50,6 +56,8 @@ public:
 	void LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 피격 처리
 	void HitCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
+	// 채팅 수신 후 클라이언트들에게 송신
+	void BroadcastChat(stringstream& RecvStream);
 
 private:
 	stSOCKETINFO *	SocketInfo;		// 소켓 정보
@@ -64,5 +72,5 @@ private:
 	map<int, SOCKET> SessionSocket;
 	float			HitPoint;		// 타격 데미지
 
-	void WriteCharactersInfoToSocket(stSOCKETINFO* pSocket);
+	void WriteCharactersInfoToSocket(stSOCKETINFO* pSocket);	
 };

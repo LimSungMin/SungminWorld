@@ -2,6 +2,8 @@
 #include "IOCompletionPort.h"
 #include <process.h>
 #include <sstream>
+#include <algorithm>
+#include <string>
 
 unsigned int WINAPI CallWorkerThread(LPVOID p)
 {
@@ -29,7 +31,7 @@ IOCompletionPort::IOCompletionPort()
 		CharactersInfo.WorldCharacterInfo[i].X = -1;
 		CharactersInfo.WorldCharacterInfo[i].Y= -1;
 		CharactersInfo.WorldCharacterInfo[i].Z= -1;
-		CharactersInfo.WorldCharacterInfo[i].IsAlive = false;
+		CharactersInfo.WorldCharacterInfo[i].IsAlive = false;		
 	}	
 
 	HitPoint = 0.1f;
@@ -136,7 +138,7 @@ void IOCompletionPort::StartServer()
 	{		
 		clientSocket = WSAAccept(
 			ListenSocket, (struct sockaddr *)&clientAddr, &addrLen, NULL, NULL
-		);
+		);		
 
 		if (clientSocket == INVALID_SOCKET)
 		{
@@ -241,6 +243,15 @@ void IOCompletionPort::Send(stSOCKETINFO * pSocket)
 		printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
 	}
 
+	
+}
+
+void IOCompletionPort::Recv(stSOCKETINFO * pSocket)
+{
+	int nResult;
+	// DWORD	sendBytes;
+	DWORD	dwFlags = 0;
+
 	// stSOCKETINFO 데이터 초기화
 	ZeroMemory(&(pSocket->overlapped), sizeof(OVERLAPPED));
 	ZeroMemory(pSocket->messageBuffer, MAX_BUFFER);
@@ -327,16 +338,19 @@ void IOCompletionPort::WorkerThread()
 			case EPacketType::ENROLL_CHARACTER:
 			{
 				EnrollCharacter(RecvStream, pSocketInfo);
+				Send(pSocketInfo);
 			}
 				break;
 			case EPacketType::SEND_CHARACTER:
 			{
 				SyncCharacters(RecvStream, pSocketInfo);
+				Send(pSocketInfo);
 			}
 			break;
 			case EPacketType::HIT_CHARACTER:
 			{
 				HitCharacter(RecvStream, pSocketInfo);
+				Send(pSocketInfo);
 			}
 			break;
 			case EPacketType::LOGOUT_CHARACTER:
@@ -344,11 +358,15 @@ void IOCompletionPort::WorkerThread()
 				LogoutCharacter(RecvStream, pSocketInfo);
 			}
 			break;
+			case EPacketType::CHAT:
+			{
+				BroadcastChat(RecvStream);
+			}
+			break;
 			default:
 				break;
-			}									
-				
-			Send(pSocketInfo);
+			}																
+			Recv(pSocketInfo);
 		}
 	}
 }
@@ -406,8 +424,8 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 	cCharacter info;
 	RecvStream >> info;
 
-	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
-		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);
+	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f]\n",
+		info.SessionId, info.X, info.Y, info.Z, info.Yaw);
 
 	// 캐릭터의 위치를 저장						
 	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
@@ -420,7 +438,11 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
 	// 캐릭터 속성
 	CharactersInfo.WorldCharacterInfo[info.SessionId].IsAlive = info.IsAlive;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].HealthValue = info.HealthValue;
+	CharactersInfo.WorldCharacterInfo[info.SessionId].HealthValue = 0.5f;
+
+	SessionSocket[info.SessionId] = pSocket->socket;
+
+	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
 
 }
 
@@ -452,7 +474,8 @@ void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* p
 	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);	
 
 	CharactersInfo.WorldCharacterInfo[SessionId].IsAlive = false;
-
+	SessionSocket.erase(SessionId);
+	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
 	WriteCharactersInfoToSocket(pSocket);
 }
 
@@ -461,6 +484,7 @@ void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pS
 	// 피격 처리된 세션 아이디
 	int DamagedSessionId;
 	RecvStream >> DamagedSessionId;
+	printf_s("[INFO] %d 데미지 받음 \n", DamagedSessionId);
 
 	CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue -= HitPoint;
 	if (CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue < 0)
@@ -470,6 +494,40 @@ void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pS
 	}	
 
 	WriteCharactersInfoToSocket(pSocket);
+}
+
+void IOCompletionPort::BroadcastChat(stringstream& RecvStream)
+{
+	stSOCKETINFO* client = new stSOCKETINFO;
+
+	int SessionId;
+	string Temp;
+	string Chat;
+
+	RecvStream >> SessionId;
+	getline(RecvStream, Temp);
+	Chat += to_string(SessionId) + "_:_";
+	while (RecvStream >> Temp)
+	{
+		Chat += Temp + "_";
+	}
+	Chat += '\0';
+	
+	printf_s("[CHAT] %s\n", Chat);	
+	
+	for (const auto& k : SessionSocket)
+	{
+		stringstream SendStream;
+		SendStream << EPacketType::CHAT << endl;
+		SendStream << Chat;
+
+		client->socket = k.second;		
+		CopyMemory(client->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());		
+		client->dataBuf.buf = client->messageBuffer;
+		client->dataBuf.len = SendStream.str().length();
+
+		Send(client);		
+	}
 }
 
 void IOCompletionPort::WriteCharactersInfoToSocket(stSOCKETINFO * pSocket)

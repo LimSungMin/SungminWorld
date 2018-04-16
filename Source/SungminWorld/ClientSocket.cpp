@@ -6,6 +6,8 @@
 #include <process.h>
 #include "Runtime/Core/Public/GenericPlatform/GenericPlatformAffinity.h"
 #include "Runtime/Core/Public/HAL/RunnableThread.h"
+#include <algorithm>
+#include <string>
 
 ClientSocket::ClientSocket()
 	:StopTaskCounter(0)
@@ -115,6 +117,13 @@ cCharactersInfo * ClientSocket::RecvCharacterInfo(stringstream & RecvStream)
 	return &CharactersInfo;		
 }
 
+string * ClientSocket::RecvChat(stringstream & RecvStream)
+{	
+	RecvStream >> sChat;
+	std::replace(sChat.begin(), sChat.end(), '_', ' ');
+	return &sChat;
+}
+
 void ClientSocket::LogoutCharacter(int SessionId)
 {
 	stringstream SendStream;
@@ -164,6 +173,18 @@ void ClientSocket::DamagingCharacter(int SessionId)
 	);
 }
 
+void ClientSocket::SendChat(const int& SessionId, const string & Chat)
+{
+	stringstream SendStream;
+	SendStream << EPacketType::CHAT << endl;
+	SendStream << SessionId << endl;
+	SendStream << Chat << endl;
+
+	int nSendLen = send(
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
+	);
+}
+
 
 void ClientSocket::SetGameMode(ASungminWorldGameMode * pGameMode)
 {
@@ -207,14 +228,14 @@ uint32 ClientSocket::Run()
 
 			switch (PacketType)
 			{
-// 			case EPacketType::DAMAGED_CHARACTER:
-// 			{
-// 				LocalGameMode->DamagedCharacter();
-// 			}
-// 			break;
 			case EPacketType::RECV_CHARACTER:
 			{
 				LocalGameMode->SyncCharactersInfo(RecvCharacterInfo(RecvStream));
+			}
+			break;
+			case EPacketType::CHAT:
+			{
+				LocalGameMode->SynchronizeChat(RecvChat(RecvStream));
 			}
 			break;
 			default:

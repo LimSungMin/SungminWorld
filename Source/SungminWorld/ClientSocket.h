@@ -90,7 +90,8 @@ enum EPacketType
 	RECV_CHARACTER,
 	LOGOUT_CHARACTER,
 	HIT_CHARACTER,
-	DAMAGED_CHARACTER
+	DAMAGED_CHARACTER,
+	CHAT
 };
 
 class cCharactersInfo
@@ -120,6 +121,27 @@ public:
 	}
 };
 
+class cChat 
+{
+public:
+	cChat() {};
+	~cChat() {};
+
+	int SessionId;
+	string Chat;
+
+	friend ostream& operator<<(ostream &stream, cChat& info)
+	{
+// 		stream << info.SessionId << endl;
+// 		stream << 
+	}
+
+	friend istream &operator>>(istream &stream, cChat& info)
+	{
+
+	}
+};
+
 /**
  * 
  */
@@ -133,16 +155,23 @@ public:
 	bool InitSocket();
 	// 서버와 연결
 	bool Connect(const char * pszIP, int nPort);
+
+	//////////////////////////////////////////////////////////////////////////
+	// 서버와 통신
+	//////////////////////////////////////////////////////////////////////////
 	// 초기 캐릭터 등록
 	void EnrollCharacterInfo(cCharacter& info);
 	// 캐릭터 동기화
-	void SendCharacterInfo(cCharacter& info);
-	cCharactersInfo* RecvCharacterInfo(stringstream& RecvStream);
+	void SendCharacterInfo(cCharacter& info);	
 	// 캐릭터 로그아웃
-	void LogoutCharacter(int SessionId);
-	char* UdpTest();
+	void LogoutCharacter(int SessionId);	
 	// 캐릭터 피격 처리
 	void DamagingCharacter(int SessionId);
+	// 채팅 
+	void SendChat(const int& SessionId, const string& Chat);
+	// UDP 테스트용 함수
+	char* UdpTest();
+	//////////////////////////////////////////////////////////////////////////
 
 	// 소켓이 속한 게임모드를 세팅해주는 함수
 	void SetGameMode(ASungminWorldGameMode* pGameMode);
@@ -178,6 +207,11 @@ private:
 	cCharactersInfo CharactersInfo;		// 캐릭터 정보
 	SOCKADDR_IN	UdpServerAddr;
 	ASungminWorldGameMode* GameMode;	// 게임모드 정보
+
+	string sChat;
+	char testChat[MAX_BUFFER];
+	cCharactersInfo* RecvCharacterInfo(stringstream& RecvStream);
+	string* RecvChat(stringstream& RecvStream);
 };
 
 

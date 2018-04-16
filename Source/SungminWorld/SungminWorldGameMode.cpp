@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
 #include <string>
+#include "ChatWindowWidget.h"
 
 ASungminWorldGameMode::ASungminWorldGameMode()
 {
@@ -30,8 +31,10 @@ ASungminWorldGameMode::ASungminWorldGameMode()
 	if (bIsConnected)
 	{
 		UE_LOG(LogClass, Log, TEXT("IOCP Server connect success!"));
-		Socket->SetGameMode(this);
+		Socket->SetGameMode(this);		
 	}
+
+	bIsChatNeedUpdate = false;	
 }
 
 bool ASungminWorldGameMode::LoginToServer(FString id)
@@ -45,15 +48,39 @@ bool ASungminWorldGameMode::LoginToServer(FString id)
 	return false;
 }
 
+void ASungminWorldGameMode::ChatToServer(FString Text)
+{
+	UE_LOG(LogClass, Log, TEXT("%s"), *Text);
+	Socket->SendChat(SessionId ,TCHAR_TO_UTF8(*Text));
+}
+
+int ASungminWorldGameMode::GetSessionId()
+{
+	return SessionId;
+}
+
+void ASungminWorldGameMode::RestartGame()
+{
+	
+}
+
 void ASungminWorldGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!bIsConnected) return;
+	if (!bIsConnected) return;	
 
+	// 플레이어 정보 송신
 	if (!SendPlayerInfo()) return;
 		
+	// 월드 동기화
 	if (!SynchronizeWorld()) return;	
+
+	// 채팅 동기화
+	if (bIsChatNeedUpdate)
+	{
+		UpdateChat();
+	}
 }
 
 void ASungminWorldGameMode::BeginPlay()
@@ -67,7 +94,8 @@ void ASungminWorldGameMode::BeginPlay()
 		{
 			CurrentWidget->AddToViewport();
 		}
-	}
+	}	
+
 	// 캐릭터 등록
 	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
 	if (!Player)
@@ -87,11 +115,11 @@ void ASungminWorldGameMode::BeginPlay()
 	Character.Roll = MyRotation.Roll;
 	// 속성
 	Character.IsAlive = true;
-	Character.HealthValue = Player->GetHealth();
+	Character.HealthValue = 0.5;
 	Socket->EnrollCharacterInfo(Character);
 
 	// Recv 스레드 시작
-	Socket->StartListen();
+	Socket->StartListen();	
 }
 
 void ASungminWorldGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -134,6 +162,11 @@ void ASungminWorldGameMode::SyncCharactersInfo(cCharactersInfo * ci_)
 void ASungminWorldGameMode::TestDebug()
 {
 	UE_LOG(LogClass, Log, TEXT("DEBUGGING"));
+}
+
+void ASungminWorldGameMode::SetNeedChatUpdate(bool bUpdate)
+{
+	bIsChatNeedUpdate = bUpdate;
 }
 
 bool ASungminWorldGameMode::SendPlayerInfo()
@@ -263,14 +296,44 @@ void ASungminWorldGameMode::SynchronizePlayer(const cCharacter & info)
 			world, DestroyEmiiter, transform, true
 		);
 		Player->Destroy();
+
+		CurrentWidget->RemoveFromParent();
+		GameOverWidget = CreateWidget<UUserWidget>(GetWorld(), GameOverWidgetClass);
+		if (GameOverWidget != nullptr)
+		{
+			GameOverWidget->AddToViewport();
+		}
 	}
-	// 캐릭터 속성 업데이트
-	if (Player->HealthValue != info.HealthValue)
+	else 
 	{
-		FTransform transform(Player->GetActorLocation());
-		UGameplayStatics::SpawnEmitterAtLocation(
-			world, HitEmiiter, transform, true
-		);
+		// 캐릭터 속성 업데이트
+		if (Player->HealthValue != info.HealthValue)
+		{
+			FTransform transform(Player->GetActorLocation());
+			UGameplayStatics::SpawnEmitterAtLocation(
+				world, HitEmiiter, transform, true
+			);
+			Player->HealthValue = info.HealthValue;
+		}		
 	}
-	Player->HealthValue = info.HealthValue;
+	
+}
+
+void ASungminWorldGameMode::UpdateChat()
+{	
+	UChatWindowWidget* temp = Cast<UChatWindowWidget>(CurrentWidget);
+	if (temp != nullptr)
+	{
+		UE_LOG(LogClass, Log, TEXT("Casting"));
+		temp->CallUpdateChat(				
+			FText::FromString(*FString(sChat->c_str()))
+		);		
+	}
+	bIsChatNeedUpdate = false;
+}
+
+void ASungminWorldGameMode::SynchronizeChat(const string * chat)
+{
+	sChat = chat;
+	bIsChatNeedUpdate = true;
 }
