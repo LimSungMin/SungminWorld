@@ -86,6 +86,7 @@ public:
 
 enum EPacketType
 {
+	LOGIN,
 	ENROLL_CHARACTER,
 	SEND_CHARACTER,
 	RECV_CHARACTER,
@@ -160,6 +161,9 @@ public:
 	//////////////////////////////////////////////////////////////////////////
 	// 서버와 통신
 	//////////////////////////////////////////////////////////////////////////
+
+	// 서버에 로그인
+	bool Login(const FText & Id, const FText & Pw);
 	// 초기 캐릭터 등록
 	void EnrollCharacterInfo(cCharacter& info);
 	// 캐릭터 동기화

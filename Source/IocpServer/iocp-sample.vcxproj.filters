@@ -24,6 +24,9 @@
     <ClInclude Include="IOCompletionPort.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DBConnector.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -33,6 +36,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="iocp-server.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DBConnector.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

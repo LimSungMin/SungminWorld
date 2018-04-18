@@ -10,6 +10,7 @@
 #include <vector>
 #include <iostream>
 #include "CommonClass.h"
+#include "DBConnector.h"
 
 using namespace std;
 
@@ -50,6 +51,8 @@ public:
 	// 작업 스레드
 	void WorkerThread();
 	void UdpThread();
+	// DB에 로그인
+	void Login(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 초기 등록
 	void EnrollCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 위치 동기화
@@ -63,16 +66,17 @@ public:
 
 private:
 	stSOCKETINFO *	SocketInfo;		// 소켓 정보
-	SOCKET			ListenSocket;		// 서버 리슨 소켓
-	SOCKET			UdpListenSocket;
+	SOCKET			ListenSocket;	// 서버 리슨 소켓
+	SOCKET			UdpListenSocket;// UDP 리슨 소켓
 	HANDLE			hIOCP;			// IOCP 객체 핸들
-	bool			bAccept;			// 요청 동작 플래그
+	bool			bAccept;		// 요청 동작 플래그
 	bool			bWorkerThread;	// 작업 스레드 동작 플래그
 	HANDLE *		hWorkerHandle;	// 작업 스레드 핸들		
-	HANDLE *		hUdpHandle;
+	HANDLE *		hUdpHandle;		// UDP 핸들
 	cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
-	map<int, SOCKET> SessionSocket;
+	map<int, SOCKET> SessionSocket;	// 세션별 소켓 저장
 	float			HitPoint;		// 타격 데미지
+	DBConnector 	Conn;			// DB 커넥터
 
 	void WriteCharactersInfoToSocket(stSOCKETINFO* pSocket);	
 };

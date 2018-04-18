@@ -94,7 +94,7 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 void ASungminWorldCharacter::Jump()
 {
 	ACharacter::Jump();
-
+	
 	if (!GetCharacterMovement()->IsFalling())
 	{
 		if (EnergyValue > 0)

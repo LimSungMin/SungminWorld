@@ -14,6 +14,7 @@ using namespace std;
 
 enum COMMONCLASS_API EPacketType
 {
+	LOGIN,
 	ENROLL_CHARACTER,
 	SEND_CHARACTER,
 	RECV_CHARACTER,

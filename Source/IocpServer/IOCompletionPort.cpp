@@ -35,6 +35,18 @@ IOCompletionPort::IOCompletionPort()
 	}	
 
 	HitPoint = 0.1f;
+
+	// DB 접속
+	if (!Conn.Connect(
+		"localhost",
+		"root",
+		"anfrhrl",
+		"sungminworld",
+		3306
+	)) 
+	{
+		printf_s("[ERROR] DB 접속 실패");
+	}
 }
 
 
@@ -54,6 +66,9 @@ IOCompletionPort::~IOCompletionPort()
 		delete[] hWorkerHandle;
 		hWorkerHandle = NULL;
 	}	
+
+	// DB 연결 종료
+	Conn.Close();
 }
 
 bool IOCompletionPort::Initialize()
@@ -335,22 +350,24 @@ void IOCompletionPort::WorkerThread()
 
 			switch (PacketType)
 			{
+			case EPacketType::LOGIN:
+			{
+				Login(RecvStream, pSocketInfo);
+			}
+			break;
 			case EPacketType::ENROLL_CHARACTER:
 			{
-				EnrollCharacter(RecvStream, pSocketInfo);
-				Send(pSocketInfo);
+				EnrollCharacter(RecvStream, pSocketInfo);				
 			}
-				break;
+			break;
 			case EPacketType::SEND_CHARACTER:
 			{
-				SyncCharacters(RecvStream, pSocketInfo);
-				Send(pSocketInfo);
+				SyncCharacters(RecvStream, pSocketInfo);				
 			}
 			break;
 			case EPacketType::HIT_CHARACTER:
 			{
-				HitCharacter(RecvStream, pSocketInfo);
-				Send(pSocketInfo);
+				HitCharacter(RecvStream, pSocketInfo);				
 			}
 			break;
 			case EPacketType::LOGOUT_CHARACTER:
@@ -419,6 +436,27 @@ void IOCompletionPort::UdpThread()
 	}
 }
 
+void IOCompletionPort::Login(stringstream & RecvStream, stSOCKETINFO * pSocket)
+{		
+	string Id;
+	string Pw;	
+
+	RecvStream >> Id;
+	RecvStream >> Pw;
+
+	printf_s("[INFO] 로그인 시도 {%s}/{%s}\n", Id, Pw);		
+
+	stringstream SendStream;
+	SendStream << EPacketType::LOGIN << endl;
+	SendStream << Conn.SearchAccount(Id, Pw) << endl;
+		
+	CopyMemory(pSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
+	pSocket->dataBuf.buf = pSocket->messageBuffer;
+	pSocket->dataBuf.len = SendStream.str().length();
+
+	Send(pSocket);
+}
+
 void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
 {
 	cCharacter info;
@@ -444,6 +482,7 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 
 	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
 
+	Send(pSocket);
 }
 
 void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
@@ -465,6 +504,7 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;		
 
 	WriteCharactersInfoToSocket(pSocket);
+	Send(pSocket);
 }
 
 void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket)
@@ -494,6 +534,7 @@ void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pS
 	}	
 
 	WriteCharactersInfoToSocket(pSocket);
+	Send(pSocket);
 }
 
 void IOCompletionPort::BroadcastChat(stringstream& RecvStream)

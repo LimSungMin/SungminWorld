@@ -77,6 +77,8 @@ void ASungminPlayerController::BeginPlay()
 	auto MyLocation = Player->GetActorLocation();
 	auto MyRotation = Player->GetActorRotation();
 
+	
+
 	cCharacter Character;
 	// 위치
 	Character.SessionId = SessionId;
@@ -153,7 +155,7 @@ bool ASungminPlayerController::SendPlayerInfo()
 	// 플레이어의 위치를 가져옴	
 	auto MyLocation = Player->GetActorLocation();
 	auto MyRotation = Player->GetActorRotation();
-
+	
 	cCharacter Character;
 	Character.SessionId = SessionId;
 	Character.X = MyLocation.X;
@@ -242,7 +244,7 @@ bool ASungminPlayerController::UpdateWorldInfo()
 					CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
 
 					OtherCharacter->SetActorLocation(CharacterLocation);
-					OtherCharacter->SetActorRotation(CharacterRotation);
+					OtherCharacter->SetActorRotation(CharacterRotation);					
 				}
 			}
 			else if (Actor != nullptr && ci->WorldCharacterInfo[i].IsAlive == false)
