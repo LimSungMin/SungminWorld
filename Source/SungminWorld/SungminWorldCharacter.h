@@ -55,6 +55,9 @@ public:
 
 	bool IsFalling();
 
+	int GetSessionId();
+	void SetSessionId(int SessionId);
+
 protected:
 
 	/** Resets HMD orientation in VR. */
@@ -91,6 +94,7 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
+	int SessionId;
 public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }

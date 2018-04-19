@@ -25,19 +25,9 @@ IOCompletionPort::IOCompletionPort()
 	bWorkerThread = true;
 	bAccept = true;		
 
-	for (int i = 0; i < MAX_CLIENTS; i++)
-	{		
-		cCharacter* info = &CharactersInfo.WorldCharacterInfo[i];
-		info->SessionId = -1;
-		info->X = -1;
-		info->Y= -1;
-		info->Z= -1;
-		info->IsAlive = false;		
-		info->VX = 0;
-		info->VY = 0;
-		info->VZ = 0;
-		info->HealthValue = 0;
-	}	
+	InitializeCriticalSection(&csPlayers);
+
+	CharactersInfo.players.clear();
 
 	HitPoint = 0.1f;
 
@@ -206,7 +196,7 @@ bool IOCompletionPort::CreateWorkerThread()
 	GetSystemInfo(&sysInfo);
 	printf_s("[INFO] CPU 갯수 : %d\n", sysInfo.dwNumberOfProcessors);
 	// 적절한 작업 스레드의 갯수는 (CPU * 2) + 1
-	int nThreadCnt = sysInfo.dwNumberOfProcessors * 2;
+	nThreadCnt = sysInfo.dwNumberOfProcessors * 2;
 	
 	// thread handler 선언
 	hWorkerHandle = new HANDLE[nThreadCnt];
@@ -360,22 +350,22 @@ void IOCompletionPort::WorkerThread()
 				Login(RecvStream, pSocketInfo);
 			}
 			break;
-			case EPacketType::ENROLL_CHARACTER:
+			case EPacketType::ENROLL_PLAYER:
 			{
 				EnrollCharacter(RecvStream, pSocketInfo);				
 			}
 			break;
-			case EPacketType::SEND_CHARACTER:
+			case EPacketType::SEND_PLAYER:
 			{
 				SyncCharacters(RecvStream, pSocketInfo);				
 			}
 			break;
-			case EPacketType::HIT_CHARACTER:
+			case EPacketType::HIT_PLAYER:
 			{
 				HitCharacter(RecvStream, pSocketInfo);				
 			}
 			break;
-			case EPacketType::LOGOUT_CHARACTER:
+			case EPacketType::LOGOUT_PLAYER:
 			{
 				LogoutCharacter(RecvStream, pSocketInfo);
 			}
@@ -470,7 +460,8 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Alive : [%d], Health : [%f]\n",
 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.IsAlive, info.HealthValue);
 
-	cCharacter* pinfo = &CharactersInfo.WorldCharacterInfo[info.SessionId];
+	EnterCriticalSection(&csPlayers);
+	cCharacter* pinfo = &CharactersInfo.players[info.SessionId];
 
 	// 캐릭터의 위치를 저장						
 	pinfo->SessionId = info.SessionId;
@@ -490,13 +481,15 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 
 	// 캐릭터 속성
 	pinfo->IsAlive = info.IsAlive;
-	pinfo->HealthValue = info.HealthValue;	
+	pinfo->HealthValue = info.HealthValue;
+	LeaveCriticalSection(&csPlayers);
 
 	SessionSocket[info.SessionId] = pSocket->socket;
 
 	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
 
-	Send(pSocket);
+	//Send(pSocket);
+	BroadcastNewPlayer(CharactersInfo);
 }
 
 void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
@@ -506,8 +499,8 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 
 // 	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
 // 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
-	
-	cCharacter * pinfo = &CharactersInfo.WorldCharacterInfo[info.SessionId];
+	EnterCriticalSection(&csPlayers);	
+	cCharacter * pinfo = &CharactersInfo.players[info.SessionId];
 
 	// 캐릭터의 위치를 저장						
 	pinfo->SessionId = info.SessionId;
@@ -523,7 +516,8 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 	// 캐릭터의 속도를 저장
 	pinfo->VX = info.VX;
 	pinfo->VY = info.VY;
-	pinfo->VZ = info.VZ;	
+	pinfo->VZ = info.VZ;
+	LeaveCriticalSection(&csPlayers);
 
 	WriteCharactersInfoToSocket(pSocket);
 	Send(pSocket);
@@ -534,8 +528,9 @@ void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* p
 	int SessionId;
 	RecvStream >> SessionId;
 	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);	
-
-	CharactersInfo.WorldCharacterInfo[SessionId].IsAlive = false;
+	EnterCriticalSection(&csPlayers);
+	CharactersInfo.players[SessionId].IsAlive = false;	
+	LeaveCriticalSection(&csPlayers);
 	SessionSocket.erase(SessionId);
 	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
 	WriteCharactersInfoToSocket(pSocket);
@@ -547,14 +542,14 @@ void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pS
 	int DamagedSessionId;
 	RecvStream >> DamagedSessionId;
 	printf_s("[INFO] %d 데미지 받음 \n", DamagedSessionId);
-
-	CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue -= HitPoint;
-	if (CharactersInfo.WorldCharacterInfo[DamagedSessionId].HealthValue < 0)
+	EnterCriticalSection(&csPlayers);
+	CharactersInfo.players[DamagedSessionId].HealthValue -= HitPoint;
+	if (CharactersInfo.players[DamagedSessionId].HealthValue < 0)
 	{
 		// 캐릭터 사망처리
-		CharactersInfo.WorldCharacterInfo[DamagedSessionId].IsAlive = false;
+		CharactersInfo.players[DamagedSessionId].IsAlive = false;
 	}	
-
+	LeaveCriticalSection(&csPlayers);
 	WriteCharactersInfoToSocket(pSocket);
 	Send(pSocket);
 }
@@ -577,19 +572,34 @@ void IOCompletionPort::BroadcastChat(stringstream& RecvStream)
 	Chat += '\0';
 	
 	printf_s("[CHAT] %s\n", Chat);	
-	
-	for (const auto& k : SessionSocket)
-	{
-		stringstream SendStream;
-		SendStream << EPacketType::CHAT << endl;
-		SendStream << Chat;
 
-		client->socket = k.second;		
-		CopyMemory(client->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());		
+	stringstream SendStream;
+	SendStream << EPacketType::CHAT << endl;
+	SendStream << Chat;
+
+	Broadcast(SendStream);
+}
+
+void IOCompletionPort::BroadcastNewPlayer(cCharactersInfo & player)
+{
+	stringstream SendStream;
+	SendStream << EPacketType::ENTER_NEW_PLAYER << endl;
+	SendStream << player << endl;
+
+	Broadcast(SendStream);
+}
+
+void IOCompletionPort::Broadcast(stringstream & SendStream)
+{
+	stSOCKETINFO* client = new stSOCKETINFO;
+	for (const auto& kvp : SessionSocket)
+	{
+		client->socket = kvp.second;
+		CopyMemory(client->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
 		client->dataBuf.buf = client->messageBuffer;
 		client->dataBuf.len = SendStream.str().length();
 
-		Send(client);		
+		Send(client);
 	}
 }
 
@@ -598,7 +608,7 @@ void IOCompletionPort::WriteCharactersInfoToSocket(stSOCKETINFO * pSocket)
 	stringstream SendStream;
 
 	// 직렬화	
-	SendStream << EPacketType::RECV_CHARACTER << endl;
+	SendStream << EPacketType::RECV_PLAYER << endl;
 	SendStream << CharactersInfo << endl;
 
 	// !!! 중요 !!! data.buf 에다 직접 데이터를 쓰면 쓰레기값이 전달될 수 있음

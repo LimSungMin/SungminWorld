@@ -61,8 +61,13 @@ public:
 	void LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
 	// 캐릭터 피격 처리
 	void HitCharacter(stringstream& RecvStream, stSOCKETINFO* pSocket);
+	
+	// 브로드캐스트 함수
+	void Broadcast(stringstream& SendStream);
 	// 채팅 수신 후 클라이언트들에게 송신
 	void BroadcastChat(stringstream& RecvStream);
+	// 다른 클라이언트들에게 새 플레이어 입장 정보 보냄
+	void BroadcastNewPlayer(cCharactersInfo& player);
 
 private:
 	stSOCKETINFO *	SocketInfo;		// 소켓 정보
@@ -77,6 +82,10 @@ private:
 	map<int, SOCKET> SessionSocket;	// 세션별 소켓 저장
 	float			HitPoint;		// 타격 데미지
 	DBConnector 	Conn;			// DB 커넥터
+	HANDLE			hSemaphore;
+	int				nThreadCnt;
+
+	CRITICAL_SECTION csPlayers;		// CharactersInfo 임계영역
 
 	void WriteCharactersInfoToSocket(stSOCKETINFO* pSocket);	
 };

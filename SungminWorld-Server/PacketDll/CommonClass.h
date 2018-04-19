@@ -7,6 +7,7 @@
 #endif
 
 #include <iostream>
+#include <map>
 
 using namespace std;
 
@@ -15,13 +16,14 @@ using namespace std;
 enum COMMONCLASS_API EPacketType
 {
 	LOGIN,
-	ENROLL_CHARACTER,
-	SEND_CHARACTER,
-	RECV_CHARACTER,
-	LOGOUT_CHARACTER,
-	HIT_CHARACTER,
-	DAMAGED_CHARACTER,
-	CHAT
+	ENROLL_PLAYER,
+	SEND_PLAYER,
+	RECV_PLAYER,
+	LOGOUT_PLAYER,
+	HIT_PLAYER,
+	DAMAGED_PLAYER,
+	CHAT,
+	ENTER_NEW_PLAYER
 };
 
 class COMMONCLASS_API cCharacter {
@@ -89,24 +91,36 @@ class COMMONCLASS_API cCharactersInfo
 public:
 	cCharactersInfo();
 	~cCharactersInfo();
-
-	cCharacter WorldCharacterInfo[MAX_CLIENTS];
+	
+	map<int, cCharacter> players;
 
 	friend ostream& operator<<(ostream &stream, cCharactersInfo& info)
 	{
-		for (int i = 0; i < MAX_CLIENTS; i++)
+		stream << info.players.size() << endl;
+		for (auto& kvp : info.players)
 		{
-			stream << info.WorldCharacterInfo[i] << endl;
+			stream << kvp.first << endl;
+			stream << kvp.second << endl;
 		}
+
 		return stream;
 	}
 
 	friend istream &operator>>(istream &stream, cCharactersInfo& info)
 	{
-		for (int i = 0; i < MAX_CLIENTS; i++)
+		int nPlayers = 0;
+		int SessionId = 0;
+		cCharacter Player;
+		info.players.clear();
+
+		stream >> nPlayers;
+		for (int i = 0; i < nPlayers; i++)
 		{
-			stream >> info.WorldCharacterInfo[i];
+			stream >> SessionId;
+			stream >> Player;
+			info.players[SessionId] = Player;			
 		}
+
 		return stream;
 	}
 };

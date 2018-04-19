@@ -129,6 +129,16 @@ bool ASungminWorldCharacter::IsFalling()
 	return GetCharacterMovement()->IsFalling();
 }
 
+int ASungminWorldCharacter::GetSessionId()
+{
+	return SessionId;
+}
+
+void ASungminWorldCharacter::SetSessionId(int SessionId_)
+{
+	SessionId = SessionId_;
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();

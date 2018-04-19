@@ -67,8 +67,10 @@ public:
 	void RecvWorldInfo(cCharactersInfo * ci);
 
 	// 소켓으로부터 채팅 정보 수신
-	void RecvChat(const string* chat);	
-	void SetNeedChatUpdate(bool bUpdate);
+	void RecvChat(const string* chat);		
+
+	// 새 플레이어 업데이트
+	void RecvNewPlayer(cCharactersInfo * NewPlayer);
 	
 private:
 	ClientSocket * Socket;			// 서버와 접속할 소켓
@@ -79,7 +81,14 @@ private:
 	bool SendPlayerInfo();			// 플레이어 위치 송신
 	bool UpdateWorldInfo();		// 월드 동기화
 	void UpdatePlayerInfo(const cCharacter & info);		// 플레이어 동기화	
+
+	// 채팅 업데이트
 	bool bIsChatNeedUpdate;
+	const string* chat;
 	void UpdateChat();
-	const string* sChat;
+	
+	// 새 플레이어 입장
+	bool bNewPlayerEntered;
+	cCharactersInfo * NewPlayer;
+	void UpdateNewPlayer();
 };
