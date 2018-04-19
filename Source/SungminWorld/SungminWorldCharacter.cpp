@@ -124,6 +124,11 @@ bool ASungminWorldCharacter::IsAlive()
 	return bIsAlive;
 }
 
+bool ASungminWorldCharacter::IsFalling()
+{
+	return GetCharacterMovement()->IsFalling();
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();

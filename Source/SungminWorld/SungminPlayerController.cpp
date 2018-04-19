@@ -37,9 +37,8 @@ int ASungminPlayerController::GetSessionId()
 }
 
 void ASungminPlayerController::Tick(float DeltaSeconds)
-{
-	//UE_LOG(LogClass, Log, TEXT("Tick Start"));	
-	Super::Tick(DeltaSeconds);
+{	
+	Super::Tick(DeltaSeconds);	
 
 	if (!bIsConnected) return;
 
@@ -54,7 +53,6 @@ void ASungminPlayerController::Tick(float DeltaSeconds)
 	{
 		UpdateChat();
 	}
-	//UE_LOG(LogClass, Log, TEXT("Tick End"));
 }
 
 void ASungminPlayerController::BeginPlay()
@@ -153,17 +151,21 @@ bool ASungminPlayerController::SendPlayerInfo()
 		return false;
 
 	// 플레이어의 위치를 가져옴	
-	auto MyLocation = Player->GetActorLocation();
-	auto MyRotation = Player->GetActorRotation();
+	auto Location = Player->GetActorLocation();	
+	auto Rotation = Player->GetActorRotation();
+	auto Velocity = Player->GetVelocity();
+	bool IsFalling = Player->IsFalling();
 	
 	cCharacter Character;
 	Character.SessionId = SessionId;
-	Character.X = MyLocation.X;
-	Character.Y = MyLocation.Y;
-	Character.Z = MyLocation.Z;
-	Character.Yaw = MyRotation.Yaw;
-	Character.Pitch = MyRotation.Pitch;
-	Character.Roll = MyRotation.Roll;
+	Character.X = Location.X;
+	Character.Y = Location.Y;
+	Character.Z = Location.Z;
+	Character.Yaw = Rotation.Yaw;
+	Character.Pitch = Rotation.Pitch;
+	Character.Roll = Rotation.Roll;		
+	// TODO : Character.Velocity 
+	Character.IsJumping = IsFalling;
 
 	Socket->SendCharacterInfo(Character);
 
@@ -218,7 +220,7 @@ bool ASungminPlayerController::UpdateWorldInfo()
 				ACharacter* const SpawnCharacter = world->SpawnActor<ACharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 			}
 			// 해당되는 세션 아이다가 있으면 위치 동기화
-			else if (Actor != nullptr && ci->WorldCharacterInfo[i].IsAlive == true)
+			else if (Actor != nullptr /*&& ci->WorldCharacterInfo[i].IsAlive == true*/)
 			{
 				AOtherNetworkCharacter* OtherCharacter = Cast<AOtherNetworkCharacter>(Actor);
 				if (OtherCharacter)
@@ -240,11 +242,16 @@ bool ASungminPlayerController::UpdateWorldInfo()
 
 					FRotator CharacterRotation;
 					CharacterRotation.Yaw = ci->WorldCharacterInfo[CharacterSessionId].Yaw;
-					CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
-					CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
+					// CharacterRotation.Pitch = ci->WorldCharacterInfo[CharacterSessionId].Pitch;
+					// CharacterRotation.Roll = ci->WorldCharacterInfo[CharacterSessionId].Roll;
 
-					OtherCharacter->SetActorLocation(CharacterLocation);
-					OtherCharacter->SetActorRotation(CharacterRotation);					
+					const FVector Direction = FRotationMatrix(CharacterRotation).GetUnitAxis(EAxis::X);
+
+					OtherCharacter->SetFalling(ci->WorldCharacterInfo[CharacterSessionId].IsJumping);
+					// OtherCharacter->SetActorLocation(CharacterLocation);
+					FVector v(1.0f, 0, 0);
+					OtherCharacter->AddMovementInput(v);
+					// OtherCharacter->SetActorRotation(CharacterRotation);					
 				}
 			}
 			else if (Actor != nullptr && ci->WorldCharacterInfo[i].IsAlive == false)

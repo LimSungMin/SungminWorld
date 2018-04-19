@@ -53,6 +53,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Properties")
 	bool IsAlive();
 
+	bool IsFalling();
+
 protected:
 
 	/** Resets HMD orientation in VR. */

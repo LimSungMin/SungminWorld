@@ -15,4 +15,16 @@ class SUNGMINWORLD_API AOtherNetworkCharacter : public ASungminWorldCharacter
 	GENERATED_BODY()
 public:	
 	
+	UFUNCTION(BlueprintCallable)
+	bool GetFalling();
+
+// 	UFUNCTION(BlueprintCallable)
+// 	FVector GetVelocity();
+
+	void SetFalling(bool IsFall);
+	void SetVelocity(FVector velocity);
+
+private:	
+	bool	bIsFalling;
+	FVector Velocity;
 };
