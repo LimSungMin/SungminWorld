@@ -14,6 +14,7 @@ class SUNGMINWORLD_API AOtherNetworkCharacter : public ASungminWorldCharacter
 {
 	GENERATED_BODY()
 public:	
+	AOtherNetworkCharacter();
 	
 	UFUNCTION(BlueprintCallable)
 	bool GetFalling();

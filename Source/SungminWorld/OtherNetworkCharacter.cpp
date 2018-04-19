@@ -2,6 +2,10 @@
 
 #include "OtherNetworkCharacter.h"
 
+AOtherNetworkCharacter::AOtherNetworkCharacter()
+{	
+}
+
 bool AOtherNetworkCharacter::GetFalling()
 {
 	return bIsFalling;	

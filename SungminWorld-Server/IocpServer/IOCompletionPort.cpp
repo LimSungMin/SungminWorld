@@ -27,12 +27,16 @@ IOCompletionPort::IOCompletionPort()
 
 	for (int i = 0; i < MAX_CLIENTS; i++)
 	{		
-		CharactersInfo.WorldCharacterInfo[i].SessionId = -1;
-		CharactersInfo.WorldCharacterInfo[i].X = -1;
-		CharactersInfo.WorldCharacterInfo[i].Y= -1;
-		CharactersInfo.WorldCharacterInfo[i].Z= -1;
-		CharactersInfo.WorldCharacterInfo[i].IsAlive = false;		
-		CharactersInfo.WorldCharacterInfo[i].IsJumping = false;
+		cCharacter* info = &CharactersInfo.WorldCharacterInfo[i];
+		info->SessionId = -1;
+		info->X = -1;
+		info->Y= -1;
+		info->Z= -1;
+		info->IsAlive = false;		
+		info->VX = 0;
+		info->VY = 0;
+		info->VZ = 0;
+		info->HealthValue = 0;
 	}	
 
 	HitPoint = 0.1f;
@@ -463,22 +467,30 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 	cCharacter info;
 	RecvStream >> info;
 
-	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f]\n",
-		info.SessionId, info.X, info.Y, info.Z, info.Yaw);
+	printf_s("[INFO][%d]캐릭터 등록 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Alive : [%d], Health : [%f]\n",
+		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.IsAlive, info.HealthValue);
+
+	cCharacter* pinfo = &CharactersInfo.WorldCharacterInfo[info.SessionId];
 
 	// 캐릭터의 위치를 저장						
-	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].X = info.X;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Y = info.Y;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Z = info.Z;
+	pinfo->SessionId = info.SessionId;
+	pinfo->X = info.X;
+	pinfo->Y = info.Y;
+	pinfo->Z = info.Z;
+
 	// 캐릭터의 회전값을 저장
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;
+	pinfo->Yaw = info.Yaw;
+	pinfo->Pitch = info.Pitch;
+	pinfo->Roll = info.Roll;
+
+	// 캐릭터의 속도를 저장
+	pinfo->VX = info.VX;
+	pinfo->VY = info.VY;
+	pinfo->VZ = info.VZ;
+
 	// 캐릭터 속성
-	CharactersInfo.WorldCharacterInfo[info.SessionId].IsAlive = info.IsAlive;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].HealthValue = 0.5f;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].IsJumping = false;
+	pinfo->IsAlive = info.IsAlive;
+	pinfo->HealthValue = info.HealthValue;	
 
 	SessionSocket[info.SessionId] = pSocket->socket;
 
@@ -495,17 +507,23 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 // 	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
 // 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
 	
-	// 캐릭터의 위치를 저장						
-	CharactersInfo.WorldCharacterInfo[info.SessionId].SessionId = info.SessionId;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].X = info.X;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Y = info.Y;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Z = info.Z;
-	// 캐릭터의 회전값을 저장
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Yaw = info.Yaw;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Pitch = info.Pitch;
-	CharactersInfo.WorldCharacterInfo[info.SessionId].Roll = info.Roll;		
+	cCharacter * pinfo = &CharactersInfo.WorldCharacterInfo[info.SessionId];
 
-	CharactersInfo.WorldCharacterInfo[info.SessionId].IsJumping = info.IsJumping;
+	// 캐릭터의 위치를 저장						
+	pinfo->SessionId = info.SessionId;
+	pinfo->X = info.X;
+	pinfo->Y = info.Y;
+	pinfo->Z = info.Z;
+
+	// 캐릭터의 회전값을 저장
+	pinfo->Yaw = info.Yaw;
+	pinfo->Pitch = info.Pitch;
+	pinfo->Roll = info.Roll;
+
+	// 캐릭터의 속도를 저장
+	pinfo->VX = info.VX;
+	pinfo->VY = info.VY;
+	pinfo->VZ = info.VZ;	
 
 	WriteCharactersInfoToSocket(pSocket);
 	Send(pSocket);

@@ -39,11 +39,13 @@ public:
 	float	Yaw;
 	float	Pitch;
 	float	Roll;
+	// 속도
+	float VX;
+	float VY;
+	float VZ;
 	// 속성
-	bool	IsAlive;
-	bool	IsJumping;
+	bool	IsAlive;		
 	float	HealthValue;
-
 
 	friend ostream& operator<<(ostream &stream, cCharacter& info)
 	{
@@ -51,11 +53,13 @@ public:
 		stream << info.X << endl;
 		stream << info.Y << endl;
 		stream << info.Z << endl;
+		stream << info.VX << endl;
+		stream << info.VY << endl;
+		stream << info.VZ << endl;
 		stream << info.Yaw << endl;
 		stream << info.Pitch << endl;
 		stream << info.Roll << endl;
-		stream << info.IsAlive << endl;
-		stream << info.IsJumping << endl;
+		stream << info.IsAlive << endl;		
 		stream << info.HealthValue << endl;
 
 		return stream;
@@ -67,11 +71,13 @@ public:
 		stream >> info.X;
 		stream >> info.Y;
 		stream >> info.Z;
+		stream >> info.VX;
+		stream >> info.VY;
+		stream >> info.VZ;
 		stream >> info.Yaw;
 		stream >> info.Pitch;
 		stream >> info.Roll;
-		stream >> info.IsAlive;
-		stream >> info.IsJumping;
+		stream >> info.IsAlive;		
 		stream >> info.HealthValue;
 
 		return stream;
