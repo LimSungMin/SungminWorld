@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "ClientSocket.h"
-#include "OtherNetworkCharacter.h"
+#include "SungminWorldCharacter.h"
 #include "SungminPlayerController.generated.h"
 
 /**
@@ -61,7 +61,8 @@ public:
 	AActor* FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId);
 
 	// 소켓에게 다른 캐릭터 타격 정보 전달
-	void HitCharacter(const int& SessionId, const AOtherNetworkCharacter* DamagedCharacter);
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void HitCharacter(const int& SessionId, const ASungminWorldCharacter* DamagedCharacter);
 
 	// 소켓으로부터 월드 정보 수신
 	void RecvWorldInfo(cCharactersInfo * ci);

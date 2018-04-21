@@ -55,8 +55,26 @@ public:
 
 	bool IsFalling();
 
+	UFUNCTION(BlueprintCallable)
 	int GetSessionId();
+
 	void SetSessionId(int SessionId);
+
+	// 피격 애니메이션
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayDamagedAnimation();
+
+	// 타격 애니메이션
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayHitAnimation();
+
+	UFUNCTION(BlueprintCallable)
+	void HitOtherCharacter();
+
+	UFUNCTION(BlueprintCallable)
+	void SetAttacking(bool attack);
+
+	bool IsAttacking();	
 
 protected:
 
@@ -87,14 +105,20 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);	
 
-	void HitOtherCharacter();	
+	
 
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
-	int SessionId;
+	int		SessionId;
+	bool	bIsAlive;
+	bool	bIsAttacking;
+
+	FTimerHandle HitTimerHandle;	
+	bool HitEnable;
+	void ResetHitEnable();
 public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -102,7 +126,6 @@ public:
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 private:	
 	// 플레이어 캐릭터 점프
-	void Jump();
-	bool bIsAlive;
+	void Jump();	
 };
 

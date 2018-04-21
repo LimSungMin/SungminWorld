@@ -9,10 +9,9 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Classes/Components/SphereComponent.h"
-#include "OtherNetworkCharacter.h"
 #include "Engine/World.h"
 #include "SungminPlayerController.h"
-
+#include "TimerManager.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -57,6 +56,9 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	MoodValue = 0.5f;
 
 	bIsAlive = true;
+	bIsAttacking = false;	
+	SessionId = -1;	
+	HitEnable = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -91,6 +93,11 @@ void ASungminWorldCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ASungminWorldCharacter::OnResetVR);
 }
 
+void ASungminWorldCharacter::ResetHitEnable()
+{
+	HitEnable = true;
+}
+
 void ASungminWorldCharacter::Jump()
 {
 	ACharacter::Jump();
@@ -104,9 +111,8 @@ void ASungminWorldCharacter::Jump()
 		else
 		{
 			EnergyValue = 0;
-		}
-		
-	}	
+		}		
+	}		
 }
 
 void ASungminWorldCharacter::UpdateHealth(float HealthChange)
@@ -139,6 +145,16 @@ void ASungminWorldCharacter::SetSessionId(int SessionId_)
 	SessionId = SessionId_;
 }
 
+void ASungminWorldCharacter::SetAttacking(bool attack)
+{
+	bIsAttacking = attack;
+}
+
+bool ASungminWorldCharacter::IsAttacking()
+{
+	return bIsAttacking;
+}
+
 void ASungminWorldCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
@@ -155,7 +171,18 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 }
 
 void ASungminWorldCharacter::HitOtherCharacter()
-{	
+{
+	if (HitEnable)
+	{
+		HitEnable = false;
+		GetWorldTimerManager().SetTimer(HitTimerHandle, this, &ASungminWorldCharacter::ResetHitEnable, 0.5f, false, 0.5f);
+	}
+	else
+	{
+		return;
+	}
+	
+	
 	// Sphere 내 다른 캐릭터의 목록을 가져온다
 	TArray<UActorComponent*> Comps;
 	TArray<AActor*> NearCharacters;
@@ -173,12 +200,11 @@ void ASungminWorldCharacter::HitOtherCharacter()
 	// 오버래핑된 캐릭터들에게 Hit 이벤트를 작동한다
 	for (auto Character : NearCharacters)
 	{
-		AOtherNetworkCharacter * OtherCharacter = Cast<AOtherNetworkCharacter>(Character);
-		if (OtherCharacter)
+		ASungminWorldCharacter * OtherCharacter = Cast<ASungminWorldCharacter>(Character);
+		if (OtherCharacter && OtherCharacter->GetSessionId() != -1 && OtherCharacter->GetSessionId() != SessionId)
 		{				
 			ASungminPlayerController* PlayerController = Cast<ASungminPlayerController>(GetWorld()->GetFirstPlayerController());
-
-			PlayerController->HitCharacter(FCString::Atoi(*OtherCharacter->GetName()), OtherCharacter);
+			PlayerController->HitCharacter(OtherCharacter->GetSessionId(), OtherCharacter);
 		}
 	}	
 }

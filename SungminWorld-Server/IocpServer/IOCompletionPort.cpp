@@ -461,6 +461,7 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.IsAlive, info.HealthValue);
 
 	EnterCriticalSection(&csPlayers);
+
 	cCharacter* pinfo = &CharactersInfo.players[info.SessionId];
 
 	// 캐릭터의 위치를 저장						
@@ -482,6 +483,8 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 	// 캐릭터 속성
 	pinfo->IsAlive = info.IsAlive;
 	pinfo->HealthValue = info.HealthValue;
+	pinfo->IsAttacking = info.IsAttacking;
+
 	LeaveCriticalSection(&csPlayers);
 
 	SessionSocket[info.SessionId] = pSocket->socket;
@@ -497,9 +500,10 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 	cCharacter info;	
 	RecvStream >> info;
 
-// 	printf_s("[INFO][%d]정보 수신 - X : [%f], Y : [%f], Z : [%f], Yaw : [%f], Roll : [%f], Pitch : [%f]\n",
-// 		info.SessionId, info.X, info.Y, info.Z, info.Yaw, info.Roll, info.Pitch);	
+// 	printf_s("[INFO][%d]정보 수신 - %d\n",
+// 		info.SessionId, info.IsAttacking);	
 	EnterCriticalSection(&csPlayers);	
+
 	cCharacter * pinfo = &CharactersInfo.players[info.SessionId];
 
 	// 캐릭터의 위치를 저장						
@@ -517,6 +521,9 @@ void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pS
 	pinfo->VX = info.VX;
 	pinfo->VY = info.VY;
 	pinfo->VZ = info.VZ;
+
+	pinfo->IsAttacking = info.IsAttacking;
+
 	LeaveCriticalSection(&csPlayers);
 
 	WriteCharactersInfoToSocket(pSocket);

@@ -8,7 +8,7 @@
 
 ASungminPlayerController::ASungminPlayerController()
 {
-	SessionId = FMath::RandRange(0, 100);
+	SessionId = FMath::RandRange(0, 10000);
 
 	// 서버와 연결
 	Socket = ClientSocket::GetSingleton();
@@ -22,6 +22,8 @@ ASungminPlayerController::ASungminPlayerController()
 
 	bIsChatNeedUpdate = false;
 	bNewPlayerEntered = false;
+
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 ASungminPlayerController::~ASungminPlayerController()
@@ -42,6 +44,8 @@ int ASungminPlayerController::GetSessionId()
 void ASungminPlayerController::Tick(float DeltaSeconds)
 {	
 	Super::Tick(DeltaSeconds);		
+
+	
 	
 	if (!bIsConnected) return;
 
@@ -76,9 +80,11 @@ void ASungminPlayerController::BeginPlay()
 	}
 
 	// 캐릭터 등록
-	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
 	if (!Player)
 		return;
+
+	Player->SetSessionId(SessionId);	
 
 	auto MyLocation = Player->GetActorLocation();
 	auto MyRotation = Player->GetActorRotation();
@@ -100,6 +106,7 @@ void ASungminPlayerController::BeginPlay()
 	// 속성
 	Character.IsAlive = Player->IsAlive();
 	Character.HealthValue = Player->HealthValue;
+	Character.IsAttacking = Player->IsAttacking();
 	
 	Socket->EnrollPlayer(Character);
 
@@ -119,24 +126,23 @@ AActor * ASungminPlayerController::FindActorBySessionId(TArray<AActor*> ActorArr
 {
 	for (const auto& Actor : ActorArray)
 	{
-		if (stoi(*Actor->GetName()) == SessionId)
-			return Actor;
+		ASungminWorldCharacter * swc = Cast<ASungminWorldCharacter>(Actor);
+		if (swc && swc->GetSessionId() == SessionId)
+			return Actor;		
 	}
 	return nullptr;
 }
 
-void ASungminPlayerController::HitCharacter(const int & SessionId, const AOtherNetworkCharacter * DamagedCharacter)
+void ASungminPlayerController::HitCharacter(const int & SessionId, const ASungminWorldCharacter * DamagedCharacter)
 {
 	UE_LOG(LogClass, Log, TEXT("Damaged Called %d"), SessionId);
 
 	UWorld* const world = GetWorld();
 
-	FTransform transform(DamagedCharacter->GetActorLocation());
-	UGameplayStatics::SpawnEmitterAtLocation(
-		world, HitEmiiter, transform, true
-	);
-
-	Socket->DamagePlayer(SessionId);
+	if (DamagedCharacter != nullptr)
+	{
+		Socket->DamagePlayer(SessionId);
+	}
 }
 
 void ASungminPlayerController::RecvWorldInfo(cCharactersInfo * ci_)
@@ -193,6 +199,10 @@ bool ASungminPlayerController::SendPlayerInfo()
 	Character.VY = Velocity.Y;
 	Character.VZ = Velocity.Z;	
 
+	Character.IsAlive = Player->IsAlive();
+	Character.HealthValue = Player->HealthValue;
+	Character.IsAttacking = Player->IsAttacking();
+
 	Socket->SendPlayer(Character);
 
 	return true;
@@ -212,24 +222,39 @@ bool ASungminPlayerController::UpdateWorldInfo()
 
 	// 다른 플레이어 업데이트
 	TArray<AActor*> SpawnedCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASungminWorldCharacter::StaticClass(), SpawnedCharacters);
 
 	for (const auto& Character : SpawnedCharacters)
-	{
-		UE_LOG(LogClass, Log, TEXT("test"));
-		AOtherNetworkCharacter * oc = Cast<AOtherNetworkCharacter>(Character);
-		cCharacter * info = &ci->players[oc->GetSessionId()];
+	{		
+		ASungminWorldCharacter * OtherPlayer = Cast<ASungminWorldCharacter>(Character);
+		
+		if (!OtherPlayer || OtherPlayer->GetSessionId() == -1 ||OtherPlayer->GetSessionId() == SessionId)
+		{
+			continue;
+		}
+
+		cCharacter * info = &ci->players[OtherPlayer->GetSessionId()];
+		
 		if (info->IsAlive)
 		{
-			if (oc->HealthValue != info->HealthValue)
+			if (OtherPlayer->HealthValue != info->HealthValue)
 			{
-				// spawn damaged emitter
-				FTransform transform(oc->GetActorLocation());
+				// 피격 파티클 소환
+				FTransform transform(OtherPlayer->GetActorLocation());
 				UGameplayStatics::SpawnEmitterAtLocation(
 					world, HitEmiiter, transform, true
 				);
+				// 피격 애니메이션 플레이
+				OtherPlayer->PlayDamagedAnimation();
+				OtherPlayer->HealthValue = info->HealthValue;
 			}			
-			oc->HealthValue = info->HealthValue;
+			
+			// 공격중일때 타격 애니메이션 플레이
+			if (info->IsAttacking)
+			{				
+				UE_LOG(LogClass, Log, TEXT("Other character is hitting"));
+				OtherPlayer->PlayHitAnimation();
+			}
 
 			FVector CharacterLocation;
 			CharacterLocation.X = info->X;
@@ -246,9 +271,9 @@ bool ASungminPlayerController::UpdateWorldInfo()
 			CharacterVelocity.Y = info->VY;
 			CharacterVelocity.Z = info->VZ;
 
-			oc->AddMovementInput(CharacterVelocity);
-			oc->SetActorRotation(CharacterRotation);
-			oc->SetActorLocation(CharacterLocation);
+			OtherPlayer->AddMovementInput(CharacterVelocity);
+			OtherPlayer->SetActorRotation(CharacterRotation);
+			OtherPlayer->SetActorLocation(CharacterLocation);
 		}
 		else
 		{
@@ -290,10 +315,14 @@ void ASungminPlayerController::UpdatePlayerInfo(const cCharacter & info)
 		// 캐릭터 속성 업데이트
 		if (Player->HealthValue != info.HealthValue)
 		{
+			UE_LOG(LogClass, Log, TEXT("Player damaged"));
+			// 피격 파티클 스폰
 			FTransform transform(Player->GetActorLocation());
 			UGameplayStatics::SpawnEmitterAtLocation(
 				world, HitEmiiter, transform, true
-			);
+			);			
+			// 피격 애니메이션 스폰
+			Player->PlayDamagedAnimation();
 			Player->HealthValue = info.HealthValue;
 		}
 	}
@@ -316,8 +345,9 @@ void ASungminPlayerController::UpdateNewPlayer()
 {
 	UWorld* const world = GetWorld();
 
+	// 월드 내 OtherNetworkCharacter 불러옴
 	TArray<AActor*> SpawnedCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOtherNetworkCharacter::StaticClass(), SpawnedCharacters);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASungminWorldCharacter::StaticClass(), SpawnedCharacters);
 
 	for (const auto& kvp : NewPlayer->players)
 	{
@@ -345,9 +375,9 @@ void ASungminPlayerController::UpdateNewPlayer()
 				SpawnParams.Instigator = Instigator;
 				SpawnParams.Name = FName(*FString(to_string(player->SessionId).c_str()));
 
-				AOtherNetworkCharacter* const SpawnCharacter = world->SpawnActor<AOtherNetworkCharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+				ASungminWorldCharacter* SpawnCharacter = world->SpawnActor<ASungminWorldCharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 				SpawnCharacter->SpawnDefaultController();
-				SpawnCharacter->SetSessionId(player->SessionId);
+				SpawnCharacter->SetSessionId(player->SessionId);				
 			}
 		}
 	}
