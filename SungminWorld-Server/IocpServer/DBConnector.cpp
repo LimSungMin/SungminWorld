@@ -32,6 +32,7 @@ void DBConnector::Close()
 
 bool DBConnector::SearchAccount(const string & Id, const string & Password)
 {
+	bool bResult = false;
 	string sql = "SELECT * FROM sungminworld.playeraccount WHERE id = '";
 	sql += Id + "' and pw = '" + Password + "'";
 
@@ -45,13 +46,14 @@ bool DBConnector::SearchAccount(const string & Id, const string & Password)
 	Row = mysql_fetch_row(Res);
 	if (Row != NULL)
 	{
-		return true;
+		bResult = true;
 	}
 	else
 	{
 		printf_s("[ERROR] 해당 아이디 없음\n");
-		return false;
+		bResult = false;
 	}
-
 	mysql_free_result(Res);
+
+	return bResult;
 }

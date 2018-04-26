@@ -5,6 +5,13 @@
 #include <algorithm>
 #include <string>
 
+// static 변수 초기화
+float IOCompletionPort::HitPoint = 0.1f;
+map<int, SOCKET> IOCompletionPort::SessionSocket;
+cCharactersInfo IOCompletionPort::CharactersInfo;
+DBConnector IOCompletionPort::Conn;
+CRITICAL_SECTION IOCompletionPort::csPlayers;
+
 unsigned int WINAPI CallWorkerThread(LPVOID p)
 {
 	IOCompletionPort* pOverlappedEvent = (IOCompletionPort*)p;
@@ -23,25 +30,26 @@ IOCompletionPort::IOCompletionPort()
 {
 	// 멤버 변수 초기화
 	bWorkerThread = true;
-	bAccept = true;		
+	bAccept = true;
 
 	InitializeCriticalSection(&csPlayers);
 
-	CharactersInfo.players.clear();
-
-	HitPoint = 0.1f;
-
 	// DB 접속
-	if (!Conn.Connect(
-		"localhost",
-		"root",
-		"anfrhrl",
-		"sungminworld",
-		3306
-	)) 
+	if (Conn.Connect(DB_ADDRESS, DB_ID, DB_PW, DB_SCHEMA, DB_PORT))
 	{
-		printf_s("[ERROR] DB 접속 실패");
+		printf_s("[INFO] DB 접속 성공\n");
 	}
+	else {
+		printf_s("[ERROR] DB 접속 실패\n");
+	}
+
+	// 패킷 함수 포인터에 함수 지정
+	fnProcess[EPacketType::LOGIN].funcProcessPacket = Login;
+	fnProcess[EPacketType::ENROLL_PLAYER].funcProcessPacket = EnrollCharacter;
+	fnProcess[EPacketType::SEND_PLAYER].funcProcessPacket = SyncCharacters;
+	fnProcess[EPacketType::HIT_PLAYER].funcProcessPacket = HitCharacter;
+	fnProcess[EPacketType::CHAT].funcProcessPacket = BroadcastChat;
+	fnProcess[EPacketType::LOGOUT_PLAYER].funcProcessPacket = LogoutCharacter;
 }
 
 
@@ -60,7 +68,7 @@ IOCompletionPort::~IOCompletionPort()
 	{
 		delete[] hWorkerHandle;
 		hWorkerHandle = NULL;
-	}	
+	}
 
 	// DB 연결 종료
 	Conn.Close();
@@ -73,14 +81,14 @@ bool IOCompletionPort::Initialize()
 	// winsock 2.2 버전으로 초기화
 	nResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	if (nResult != 0) 
+	if (nResult != 0)
 	{
 		printf_s("[ERROR] winsock 초기화 실패\n");
 		return false;
 	}
 
 	// 소켓 생성
-	ListenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);	
+	ListenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	UdpListenSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
 	if (ListenSocket == INVALID_SOCKET || UdpListenSocket == INVALID_SOCKET)
 	{
@@ -145,10 +153,10 @@ void IOCompletionPort::StartServer()
 
 	// 클라이언트 접속을 받음
 	while (bAccept)
-	{		
+	{
 		clientSocket = WSAAccept(
 			ListenSocket, (struct sockaddr *)&clientAddr, &addrLen, NULL, NULL
-		);		
+		);
 
 		if (clientSocket == INVALID_SOCKET)
 		{
@@ -197,16 +205,16 @@ bool IOCompletionPort::CreateWorkerThread()
 	printf_s("[INFO] CPU 갯수 : %d\n", sysInfo.dwNumberOfProcessors);
 	// 적절한 작업 스레드의 갯수는 (CPU * 2) + 1
 	nThreadCnt = sysInfo.dwNumberOfProcessors * 2;
-	
+
 	// thread handler 선언
 	hWorkerHandle = new HANDLE[nThreadCnt];
 	// thread 생성
 	for (int i = 0; i < nThreadCnt; i++)
-	{		
+	{
 		hWorkerHandle[i] = (HANDLE *)_beginthreadex(
 			NULL, 0, &CallWorkerThread, this, CREATE_SUSPENDED, &threadId
 		);
-		if (hWorkerHandle[i] == NULL) 
+		if (hWorkerHandle[i] == NULL)
 		{
 			printf_s("[ERROR] Worker Thread 생성 실패\n");
 			return false;
@@ -253,7 +261,7 @@ void IOCompletionPort::Send(stSOCKETINFO * pSocket)
 		printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
 	}
 
-	
+
 }
 
 void IOCompletionPort::Recv(stSOCKETINFO * pSocket)
@@ -290,7 +298,7 @@ void IOCompletionPort::Recv(stSOCKETINFO * pSocket)
 }
 
 void IOCompletionPort::WorkerThread()
-{		
+{
 	// 함수 호출 성공 여부
 	BOOL	bResult;
 	int		nResult;
@@ -300,16 +308,19 @@ void IOCompletionPort::WorkerThread()
 	// Completion Key를 받을 포인터 변수
 	stSOCKETINFO *	pCompletionKey;
 	// I/O 작업을 위해 요청한 Overlapped 구조체를 받을 포인터	
-	stSOCKETINFO *	pSocketInfo;
-	// 
+	stSOCKETINFO *	pSocketInfo;	
 	DWORD	dwFlags = 0;
+	// 패킷 종류
+	int PacketType;
+	// 클라이언트 정보 역직렬화
+	stringstream RecvStream;	
 
 	while (bWorkerThread)
-	{
+	{		
 		/**
 		 * 이 함수로 인해 쓰레드들은 WaitingThread Queue 에 대기상태로 들어가게 됨
 		 * 완료된 Overlapped I/O 작업이 발생하면 IOCP Queue 에서 완료된 작업을 가져와
-		 * 뒷처리를 함		 
+		 * 뒷처리를 함
 		 */
 		bResult = GetQueuedCompletionStatus(hIOCP,
 			&recvBytes,				// 실제로 전송된 바이트
@@ -334,66 +345,44 @@ void IOCompletionPort::WorkerThread()
 			free(pSocketInfo);
 			continue;
 		}
-		else
+
+		try
 		{			
-			int PacketType;			
-			// 클라이언트 정보 역직렬화
-			stringstream RecvStream;			
-			
+			RecvStream.str(std::string());
 			RecvStream << pSocketInfo->dataBuf.buf;
 			RecvStream >> PacketType;
 
-			switch (PacketType)
+			// 패킷 처리
+			if (fnProcess[PacketType].funcProcessPacket != nullptr)
 			{
-			case EPacketType::LOGIN:
-			{
-				Login(RecvStream, pSocketInfo);
+				fnProcess[PacketType].funcProcessPacket(RecvStream, pSocketInfo);
 			}
-			break;
-			case EPacketType::ENROLL_PLAYER:
+			else
 			{
-				EnrollCharacter(RecvStream, pSocketInfo);				
+				printf_s("[ERROR] 정의 되지 않은 패킷 : %d\n", PacketType);
 			}
-			break;
-			case EPacketType::SEND_PLAYER:
-			{
-				SyncCharacters(RecvStream, pSocketInfo);				
-			}
-			break;
-			case EPacketType::HIT_PLAYER:
-			{
-				HitCharacter(RecvStream, pSocketInfo);				
-			}
-			break;
-			case EPacketType::LOGOUT_PLAYER:
-			{
-				LogoutCharacter(RecvStream, pSocketInfo);
-			}
-			break;
-			case EPacketType::CHAT:
-			{
-				BroadcastChat(RecvStream);
-			}
-			break;
-			default:
-				break;
-			}																
-			Recv(pSocketInfo);
 		}
+		catch (const std::exception& e)
+		{
+			printf_s("[ERROR] 알 수 없는 예외 발생 : %s\n", e.what());
+		}
+		
+		// 클라이언트 대기
+		Recv(pSocketInfo);
 	}
 }
 
 void IOCompletionPort::UdpThread()
-{	
-	int nResult;	
+{
+	int nResult;
 	SOCKADDR_IN clientAddr;
-	int clientAddrSize = sizeof(clientAddr);	
+	int clientAddrSize = sizeof(clientAddr);
 	char RecvBuffer[MAX_BUFFER];
 	char SendBuffer[MAX_BUFFER];
 	int PacketType;
 
 	while (bAccept)
-	{		
+	{
 		nResult = recvfrom(
 			UdpListenSocket,
 			RecvBuffer,
@@ -404,22 +393,6 @@ void IOCompletionPort::UdpThread()
 		);
 		printf_s("%s\n", RecvBuffer);
 
-// 		stringstream RecvStream;
-// 		stringstream SendStream;
-// 		RecvStream << RecvBuffer;
-// 		RecvStream >> PacketType;
-// 
-// 		switch (PacketType)
-// 		{
-// 		case EPacketType::SEND_CHARACTER:
-// 		{
-// 			SyncCharacters(RecvStream, SendStream);
-// 		}
-// 		break;
-// 		default:		
-// 			break;
-// 		}		
-// 		CopyMemory(SendBuffer, (char*)SendStream.str().c_str(), SendStream.str().length());
 		nResult = sendto(
 			UdpListenSocket,
 			"world",
@@ -432,19 +405,19 @@ void IOCompletionPort::UdpThread()
 }
 
 void IOCompletionPort::Login(stringstream & RecvStream, stSOCKETINFO * pSocket)
-{		
+{
 	string Id;
-	string Pw;	
+	string Pw;
 
 	RecvStream >> Id;
 	RecvStream >> Pw;
 
-	printf_s("[INFO] 로그인 시도 {%s}/{%s}\n", Id, Pw);		
+	printf_s("[INFO] 로그인 시도 {%s}/{%s}\n", Id, Pw);
 
 	stringstream SendStream;
 	SendStream << EPacketType::LOGIN << endl;
 	SendStream << Conn.SearchAccount(Id, Pw) << endl;
-		
+
 	CopyMemory(pSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
 	pSocket->dataBuf.buf = pSocket->messageBuffer;
 	pSocket->dataBuf.len = SendStream.str().length();
@@ -497,12 +470,12 @@ void IOCompletionPort::EnrollCharacter(stringstream & RecvStream, stSOCKETINFO *
 
 void IOCompletionPort::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
 {
-	cCharacter info;	
+	cCharacter info;
 	RecvStream >> info;
 
-// 	printf_s("[INFO][%d]정보 수신 - %d\n",
-// 		info.SessionId, info.IsAttacking);	
-	EnterCriticalSection(&csPlayers);	
+	// 	printf_s("[INFO][%d]정보 수신 - %d\n",
+	// 		info.SessionId, info.IsAttacking);	
+	EnterCriticalSection(&csPlayers);
 
 	cCharacter * pinfo = &CharactersInfo.players[info.SessionId];
 
@@ -534,9 +507,9 @@ void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* p
 {
 	int SessionId;
 	RecvStream >> SessionId;
-	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);	
+	printf_s("[INFO] (%d)로그아웃 요청 수신\n", SessionId);
 	EnterCriticalSection(&csPlayers);
-	CharactersInfo.players[SessionId].IsAlive = false;	
+	CharactersInfo.players[SessionId].IsAlive = false;
 	LeaveCriticalSection(&csPlayers);
 	SessionSocket.erase(SessionId);
 	printf_s("[INFO] 클라이언트 수 : %d\n", SessionSocket.size());
@@ -544,7 +517,7 @@ void IOCompletionPort::LogoutCharacter(stringstream& RecvStream, stSOCKETINFO* p
 }
 
 void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket)
-{	
+{
 	// 피격 처리된 세션 아이디
 	int DamagedSessionId;
 	RecvStream >> DamagedSessionId;
@@ -555,13 +528,13 @@ void IOCompletionPort::HitCharacter(stringstream & RecvStream, stSOCKETINFO * pS
 	{
 		// 캐릭터 사망처리
 		CharactersInfo.players[DamagedSessionId].IsAlive = false;
-	}	
+	}
 	LeaveCriticalSection(&csPlayers);
 	WriteCharactersInfoToSocket(pSocket);
 	Send(pSocket);
 }
 
-void IOCompletionPort::BroadcastChat(stringstream& RecvStream)
+void IOCompletionPort::BroadcastChat(stringstream& RecvStream, stSOCKETINFO* pSocket)
 {
 	stSOCKETINFO* client = new stSOCKETINFO;
 
@@ -577,8 +550,8 @@ void IOCompletionPort::BroadcastChat(stringstream& RecvStream)
 		Chat += Temp + "_";
 	}
 	Chat += '\0';
-	
-	printf_s("[CHAT] %s\n", Chat);	
+
+	printf_s("[CHAT] %s\n", Chat);
 
 	stringstream SendStream;
 	SendStream << EPacketType::CHAT << endl;
