@@ -129,10 +129,7 @@ void MainIocp::WorkerThread()
 	// I/O 작업을 위해 요청한 Overlapped 구조체를 받을 포인터	
 	stSOCKETINFO *	pSocketInfo;	
 	DWORD	dwFlags = 0;
-	// 패킷 종류
-	int PacketType;
-	// 클라이언트 정보 역직렬화
-	stringstream RecvStream;	
+	
 
 	while (bWorkerThread)
 	{		
@@ -166,8 +163,12 @@ void MainIocp::WorkerThread()
 		}
 
 		try
-		{			
-			RecvStream.str(std::string());
+		{		
+			// 패킷 종류
+			int PacketType;
+			// 클라이언트 정보 역직렬화
+			stringstream RecvStream;
+
 			RecvStream << pSocketInfo->dataBuf.buf;
 			RecvStream >> PacketType;
 
