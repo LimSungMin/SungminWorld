@@ -51,7 +51,7 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)		
 
 	// 체력, 에너지, 기분 기정
-	HealthValue = 0.5f;
+	HealthValue = 1.0f;
 	EnergyValue = 0.5f;
 	MoodValue = 0.5f;
 
@@ -101,18 +101,6 @@ void ASungminWorldCharacter::ResetHitEnable()
 void ASungminWorldCharacter::Jump()
 {
 	ACharacter::Jump();
-	
-	if (!GetCharacterMovement()->IsFalling())
-	{
-		if (EnergyValue > 0)
-		{
-			EnergyValue -= 0.05f;
-		}
-		else
-		{
-			EnergyValue = 0;
-		}		
-	}		
 }
 
 void ASungminWorldCharacter::UpdateHealth(float HealthChange)

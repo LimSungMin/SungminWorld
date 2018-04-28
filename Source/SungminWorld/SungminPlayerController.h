@@ -79,9 +79,11 @@ private:
 	int				SessionId;		// 캐릭터의 세션 고유 아이디 (랜덤값)
 	cCharactersInfo * ci;			// 다른 캐릭터의 정보
 
-	bool SendPlayerInfo();			// 플레이어 위치 송신
+	void SendPlayerInfo();			// 플레이어 위치 송신
 	bool UpdateWorldInfo();		// 월드 동기화
 	void UpdatePlayerInfo(const cCharacter & info);		// 플레이어 동기화	
+
+	FTimerHandle SendPlayerInfoHandle;
 
 	// 채팅 업데이트
 	bool bIsChatNeedUpdate;

@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include <string>
 #include "ChatWindowWidget.h"
+#include "TimerManager.h"
 
 ASungminPlayerController::ASungminPlayerController()
 {
@@ -44,13 +45,11 @@ int ASungminPlayerController::GetSessionId()
 void ASungminPlayerController::Tick(float DeltaSeconds)
 {	
 	Super::Tick(DeltaSeconds);		
-
-	
-	
+		
 	if (!bIsConnected) return;
 
-	// 플레이어 정보 송신
-	if (!SendPlayerInfo()) return;
+	// 플레이어 정보 송신	
+	SendPlayerInfo();
 
 	// 월드 동기화
 	if (!UpdateWorldInfo()) return;
@@ -113,6 +112,9 @@ void ASungminPlayerController::BeginPlay()
 	// Recv 스레드 시작
 	Socket->StartListen();
 	UE_LOG(LogClass, Log, TEXT("BeginPlay End"));
+
+	// 플레이어 동기화 시작
+	// GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, this, &ASungminPlayerController::SendPlayerInfo, 0.03f, true);
 }
 
 void ASungminPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -172,11 +174,11 @@ void ASungminPlayerController::RecvNewPlayer(cCharactersInfo * NewPlayer_)
 	}	
 }
 
-bool ASungminPlayerController::SendPlayerInfo()
+void ASungminPlayerController::SendPlayerInfo()
 {
 	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
 	if (!Player)
-		return false;
+		return;
 
 	// 플레이어의 위치를 가져옴	
 	const auto & Location = Player->GetActorLocation();	
@@ -204,8 +206,6 @@ bool ASungminPlayerController::SendPlayerInfo()
 	Character.IsAttacking = Player->IsAttacking();
 
 	Socket->SendPlayer(Character);
-
-	return true;
 }
 
 bool ASungminPlayerController::UpdateWorldInfo()
