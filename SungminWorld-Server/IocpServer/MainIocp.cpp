@@ -283,8 +283,8 @@ void MainIocp::SyncCharacters(stringstream& RecvStream, stSOCKETINFO* pSocket)
 	cCharacter info;
 	RecvStream >> info;
 
-	// 	printf_s("[INFO][%d]정보 수신 - %d\n",
-	// 		info.SessionId, info.IsAttacking);	
+// 	 	printf_s("[INFO][%d]정보 수신 - %d\n",
+// 	 		info.SessionId, info.IsAttacking);	
 	EnterCriticalSection(&csPlayers);
 
 	cCharacter * pinfo = &CharactersInfo.players[info.SessionId];

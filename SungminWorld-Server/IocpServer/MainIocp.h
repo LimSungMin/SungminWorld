@@ -37,11 +37,11 @@ public:
 	static void Send(stSOCKETINFO * pSocket);	
 
 private:
-	static cCharactersInfo CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
+	static cCharactersInfo	CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
 	static map<int, SOCKET> SessionSocket;	// 세션별 소켓 저장
 	static float			HitPoint;		// 타격 데미지
-	static DBConnector 	Conn;			// DB 커넥터
-	static CRITICAL_SECTION csPlayers;		// CharactersInfo 임계영역
+	static DBConnector 		Conn;			// DB 커넥터
+	static CRITICAL_SECTION	csPlayers;		// CharactersInfo 임계영역
 
 	FuncProcess fnProcess[100];
 
