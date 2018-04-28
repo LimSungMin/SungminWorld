@@ -45,6 +45,8 @@ private:
 
 	FuncProcess fnProcess[100];
 
+	// 회원가입
+	static void SignUp(stringstream & RecvStream, stSOCKETINFO * pSocket);
 	// DB에 로그인
 	static void Login(stringstream & RecvStream, stSOCKETINFO * pSocket);
 	// 캐릭터 초기 등록

@@ -57,3 +57,21 @@ bool DBConnector::SearchAccount(const string & Id, const string & Password)
 
 	return bResult;
 }
+
+bool DBConnector::SignUpAccount(const string & Id, const string & Password)
+{
+	bool bResult = false;
+
+	string sql = "INSERT INTO sungminworld.playeraccount (id, pw) VALUES";
+	sql += " ('" + Id + "', '" + Password + "')";
+
+	if (mysql_query(Conn, sql.c_str()))
+	{
+		printf_s("[DB] 중복된 계정\n");
+		return false;
+	}
+
+	bResult = true;
+
+	return bResult;
+}

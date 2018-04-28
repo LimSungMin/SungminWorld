@@ -39,3 +39,19 @@ bool ALoginGameMode::Login(const FText & Id, const FText & Pw)
 	Socket->CloseSocket();
 	return true;
 }
+
+bool ALoginGameMode::SignUp(const FText & Id, const FText & Pw)
+{
+	if (Id.IsEmpty() || Pw.IsEmpty())
+		return false;
+
+	if (!bIsConnected)
+		return false;
+
+	bool IsSuccess = Socket->SignUp(Id, Pw);
+
+	if (!IsSuccess)
+		return false;
+	
+	return true;
+}

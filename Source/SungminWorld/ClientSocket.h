@@ -104,7 +104,8 @@ enum EPacketType
 	HIT_PLAYER,
 	DAMAGED_PLAYER,
 	CHAT,
-	ENTER_NEW_PLAYER
+	ENTER_NEW_PLAYER,
+	SIGNUP
 };
 
 class cCharactersInfo
@@ -164,6 +165,8 @@ public:
 	// 서버와 통신
 	//////////////////////////////////////////////////////////////////////////
 
+	// 회원가입
+	bool SignUp(const FText & Id, const FText & Pw);
 	// 서버에 로그인
 	bool Login(const FText & Id, const FText & Pw);
 	// 초기 캐릭터 등록

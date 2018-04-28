@@ -72,6 +72,42 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	return true;
 }
 
+bool ClientSocket::SignUp(const FText & Id, const FText & Pw)
+{
+	stringstream SendStream;
+
+	SendStream << EPacketType::SIGNUP << endl;
+	SendStream << TCHAR_TO_UTF8(*Id.ToString()) << endl;
+	SendStream << TCHAR_TO_UTF8(*Pw.ToString()) << endl;
+
+	int nSendLen = send(
+		ServerSocket, (CHAR*)SendStream.str().c_str(), SendStream.str().length(), 0
+	);
+
+	if (nSendLen == -1)
+		return false;
+
+	int nRecvLen = recv(
+		ServerSocket, (CHAR*)&recvBuffer, MAX_BUFFER, 0
+	);
+
+	if (nRecvLen <= 0)
+		return false;
+
+	stringstream RecvStream;
+	int PacketType;
+	bool SignUpResult;
+
+	RecvStream << recvBuffer;
+	RecvStream >> PacketType;
+	RecvStream >> SignUpResult;
+
+	if (PacketType != EPacketType::SIGNUP)
+		return false;
+
+	return SignUpResult;
+}
+
 bool ClientSocket::Login(const FText & Id, const FText & Pw)
 {
 	stringstream SendStream;

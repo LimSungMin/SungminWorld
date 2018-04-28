@@ -33,6 +33,7 @@ MainIocp::MainIocp()
 	}
 
 	// 패킷 함수 포인터에 함수 지정
+	fnProcess[EPacketType::SIGNUP].funcProcessPacket = SignUp;
 	fnProcess[EPacketType::LOGIN].funcProcessPacket = Login;
 	fnProcess[EPacketType::ENROLL_PLAYER].funcProcessPacket = EnrollCharacter;
 	fnProcess[EPacketType::SEND_PLAYER].funcProcessPacket = SyncCharacters;
@@ -190,6 +191,27 @@ void MainIocp::WorkerThread()
 		// 클라이언트 대기
 		Recv(pSocketInfo);
 	}
+}
+
+void MainIocp::SignUp(stringstream & RecvStream, stSOCKETINFO * pSocket)
+{
+	string Id;
+	string Pw;
+
+	RecvStream >> Id;
+	RecvStream >> Pw;
+
+	printf_s("[INFO] 회원가입 시도 {%s}/{%s}\n", Id, Pw);
+
+	stringstream SendStream;
+	SendStream << EPacketType::SIGNUP << endl;
+	SendStream << Conn.SignUpAccount(Id, Pw) << endl;
+
+	CopyMemory(pSocket->messageBuffer, (CHAR*)SendStream.str().c_str(), SendStream.str().length());
+	pSocket->dataBuf.buf = pSocket->messageBuffer;
+	pSocket->dataBuf.len = SendStream.str().length();
+
+	Send(pSocket);
 }
 
 void MainIocp::Login(stringstream & RecvStream, stSOCKETINFO * pSocket)
