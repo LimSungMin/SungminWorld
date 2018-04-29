@@ -105,7 +105,9 @@ enum EPacketType
 	DAMAGED_PLAYER,
 	CHAT,
 	ENTER_NEW_PLAYER,
-	SIGNUP
+	SIGNUP,
+	HIT_MONSTER,
+	SYNC_MONSTER
 };
 
 class cCharactersInfo
@@ -141,6 +143,74 @@ public:
 			stream >> SessionId;
 			stream >> Player;
 			info.players[SessionId] = Player;
+		}
+
+		return stream;
+	}
+};
+
+class Monster
+{
+public:
+	float	X;				// XÁÂÇ¥
+	float	Y;				// YÁÂÇ¥
+	float	Z;				// ZÁÂÇ¥
+	float	Health;			// Ã¼·Â
+	int		Id;				// °íÀ¯ id
+
+	friend ostream& operator<<(ostream &stream, Monster& info)
+	{
+		stream << info.X << endl;
+		stream << info.Y << endl;
+		stream << info.Z << endl;
+		stream << info.Health << endl;
+		stream << info.Id << endl;
+
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, Monster& info)
+	{
+		stream >> info.X;
+		stream >> info.Y;
+		stream >> info.Z;
+		stream >> info.Health;
+		stream >> info.Id;
+
+		return stream;
+	}
+};
+
+class MonsterSet
+{
+public:
+	map<int, Monster> monsters;
+
+	friend ostream& operator<<(ostream &stream, MonsterSet& info)
+	{
+		stream << info.monsters.size() << endl;
+		for (auto& kvp : info.monsters)
+		{
+			stream << kvp.first << endl;
+			stream << kvp.second << endl;
+		}
+
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, MonsterSet& info)
+	{
+		int nMonsters = 0;
+		int PrimaryId = 0;
+		Monster monster;
+		info.monsters.clear();
+
+		stream >> nMonsters;
+		for (int i = 0; i < nMonsters; i++)
+		{
+			stream >> PrimaryId;
+			stream >> monster;
+			info.monsters[PrimaryId] = monster;
 		}
 
 		return stream;
@@ -232,6 +302,9 @@ private:
 
 	cCharactersInfo NewPlayer;
 	cCharactersInfo* RecvNewPlayer(stringstream& RecvStream);
+
+	MonsterSet	MonstersInfo;
+	MonsterSet* RecvMonsterSet(stringstream& RecvStream);
 	//////////////////////////////////////////////////////////////////////////
 };
 

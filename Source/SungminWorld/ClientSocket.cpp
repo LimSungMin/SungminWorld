@@ -203,6 +203,12 @@ cCharactersInfo * ClientSocket::RecvNewPlayer(stringstream & RecvStream)
 	return &NewPlayer;
 }
 
+MonsterSet * ClientSocket::RecvMonsterSet(stringstream & RecvStream)
+{
+	RecvStream >> MonstersInfo;
+	return &MonstersInfo;
+}
+
 void ClientSocket::LogoutPlayer(int SessionId)
 {
 	// 서버에게 로그아웃시킬 캐릭터 정보 전송
@@ -320,6 +326,11 @@ uint32 ClientSocket::Run()
 			case EPacketType::ENTER_NEW_PLAYER:
 			{
 				PlayerController->RecvNewPlayer(RecvNewPlayer(RecvStream));
+			}
+			break;
+			case EPacketType::SYNC_MONSTER:
+			{
+				PlayerController->RecvMonsterSet(RecvMonsterSet(RecvStream));
 			}
 			break;
 			default:

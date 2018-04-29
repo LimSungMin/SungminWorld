@@ -47,7 +47,7 @@ public:
 	// 소켓 등록 및 서버 정보 설정
 	bool Initialize();
 	// 서버 시작
-	void StartServer();
+	virtual void StartServer();
 	// 작업 스레드 생성
 	virtual bool CreateWorkerThread();	
 	// 작업 스레드

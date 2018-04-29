@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Spawning")
 	TSubclassOf<class ACharacter> WhoToSpawn;
 
+	UPROPERTY(EditAnywhere, Category = "Spawning")
+	TSubclassOf<class AMonster> MonsterToSpawn;
+
 	// 파괴될 때 파티클
 	UPROPERTY(EditAnywhere, Category = "Spawning")
 	UParticleSystem* DestroyEmiiter;
@@ -60,6 +63,8 @@ public:
 	// 세션아이디에 매칭되는 액터 반환
 	AActor* FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId);
 
+	
+
 	// 소켓에게 다른 캐릭터 타격 정보 전달
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void HitCharacter(const int& SessionId, const ASungminWorldCharacter* DamagedCharacter);
@@ -72,6 +77,8 @@ public:
 
 	// 새 플레이어 업데이트
 	void RecvNewPlayer(cCharactersInfo * NewPlayer);
+
+	void RecvMonsterSet(MonsterSet * MonstersInfo);
 	
 private:
 	ClientSocket * Socket;			// 서버와 접속할 소켓
@@ -94,4 +101,8 @@ private:
 	bool bNewPlayerEntered;
 	cCharactersInfo * NewPlayer;
 	void UpdateNewPlayer();
+
+	MonsterSet * MonstersInfo;
+	int nMonster;
+	void UpdateMonstersInfo();
 };
