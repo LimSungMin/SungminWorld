@@ -53,12 +53,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Properties")
 	bool IsAlive();
 
-	bool IsFalling();
-
-	UFUNCTION(BlueprintCallable)
-	int GetSessionId();
-
-	void SetSessionId(int SessionId);
+	bool IsFalling();	
 
 	// 피격 애니메이션
 	UFUNCTION(BlueprintImplementableEvent)
@@ -75,6 +70,9 @@ public:
 	void SetAttacking(bool attack);
 
 	bool IsAttacking();	
+
+	// 플레이어 고유 아이디
+	int		SessionId;
 
 protected:
 
@@ -112,7 +110,6 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
-	int		SessionId;
 	bool	bIsAlive;
 	bool	bIsAttacking;
 

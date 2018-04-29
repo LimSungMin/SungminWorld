@@ -12,6 +12,7 @@
 #include "Engine/World.h"
 #include "SungminPlayerController.h"
 #include "TimerManager.h"
+#include "Monster.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ASungminWorldCharacter
@@ -123,16 +124,6 @@ bool ASungminWorldCharacter::IsFalling()
 	return GetCharacterMovement()->IsFalling();
 }
 
-int ASungminWorldCharacter::GetSessionId()
-{
-	return SessionId;
-}
-
-void ASungminWorldCharacter::SetSessionId(int SessionId_)
-{
-	SessionId = SessionId_;
-}
-
 void ASungminWorldCharacter::SetAttacking(bool attack)
 {
 	bIsAttacking = attack;
@@ -160,6 +151,7 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 
 void ASungminWorldCharacter::HitOtherCharacter()
 {
+	UE_LOG(LogClass, Log, TEXT("Hit!"));
 	if (HitEnable)
 	{
 		HitEnable = false;
@@ -188,11 +180,26 @@ void ASungminWorldCharacter::HitOtherCharacter()
 	// 오버래핑된 캐릭터들에게 Hit 이벤트를 작동한다
 	for (auto Character : NearCharacters)
 	{
+		// 플레이어
 		ASungminWorldCharacter * OtherCharacter = Cast<ASungminWorldCharacter>(Character);
-		if (OtherCharacter && OtherCharacter->GetSessionId() != -1 && OtherCharacter->GetSessionId() != SessionId)
+		if (OtherCharacter)
 		{				
-			ASungminPlayerController* PlayerController = Cast<ASungminPlayerController>(GetWorld()->GetFirstPlayerController());
-			PlayerController->HitCharacter(OtherCharacter->GetSessionId(), OtherCharacter);
+			if (OtherCharacter->SessionId != -1 && OtherCharacter->SessionId != SessionId)
+			{
+				ASungminPlayerController* PlayerController = Cast<ASungminPlayerController>(GetWorld()->GetFirstPlayerController());
+				PlayerController->HitCharacter(OtherCharacter->SessionId);
+			}			
+		}
+		// 몬스터
+		else
+		{
+			AMonster * Monster = Cast<AMonster>(Character);
+			if (Monster)
+			{
+				ASungminPlayerController* PlayerController = Cast<ASungminPlayerController>(GetWorld()->GetFirstPlayerController());
+				PlayerController->HitMonster(Monster->Id);
+				Monster->HitReact();
+			}
 		}
 	}	
 }

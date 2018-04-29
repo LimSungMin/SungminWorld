@@ -105,7 +105,11 @@ enum EPacketType
 	DAMAGED_PLAYER,
 	CHAT,
 	ENTER_NEW_PLAYER,
-	SIGNUP
+	SIGNUP,
+	HIT_MONSTER,
+	SYNC_MONSTER,
+	SPAWN_MONSTER,
+	DESTROY_MONSTER
 };
 
 class cCharactersInfo
@@ -147,6 +151,77 @@ public:
 	}
 };
 
+class Monster
+{
+public:
+	float	X;				// X좌표
+	float	Y;				// Y좌표
+	float	Z;				// Z좌표
+	float	Health;			// 체력
+	int		Id;				// 고유 id
+	bool	IsAttacking;		// 타격중인지
+
+	friend ostream& operator<<(ostream &stream, Monster& info)
+	{
+		stream << info.X << endl;
+		stream << info.Y << endl;
+		stream << info.Z << endl;
+		stream << info.Health << endl;
+		stream << info.Id << endl;
+		stream << info.IsAttacking << endl;
+
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, Monster& info)
+	{
+		stream >> info.X;
+		stream >> info.Y;
+		stream >> info.Z;
+		stream >> info.Health;
+		stream >> info.Id;
+		stream >> info.IsAttacking;
+
+		return stream;
+	}
+};
+
+class MonsterSet
+{
+public:
+	map<int, Monster> monsters;
+
+	friend ostream& operator<<(ostream &stream, MonsterSet& info)
+	{
+		stream << info.monsters.size() << endl;
+		for (auto& kvp : info.monsters)
+		{
+			stream << kvp.first << endl;
+			stream << kvp.second << endl;
+		}
+
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, MonsterSet& info)
+	{
+		int nMonsters = 0;
+		int PrimaryId = 0;
+		Monster monster;
+		info.monsters.clear();
+
+		stream >> nMonsters;
+		for (int i = 0; i < nMonsters; i++)
+		{
+			stream >> PrimaryId;
+			stream >> monster;
+			info.monsters[PrimaryId] = monster;
+		}
+
+		return stream;
+	}
+};
+
 /**
  * 
  */
@@ -174,9 +249,11 @@ public:
 	// 캐릭터 동기화
 	void SendPlayer(cCharacter& info);	
 	// 캐릭터 로그아웃
-	void LogoutPlayer(int SessionId);	
+	void LogoutPlayer(const int& SessionId);	
 	// 캐릭터 피격 처리
-	void DamagePlayer(int SessionId);
+	void HitPlayer(const int& SessionId);
+	// 몬스터 피격 처리
+	void HitMonster(const int& MonsterId);
 	// 채팅 
 	void SendChat(const int& SessionId, const string& Chat);
 	// UDP 테스트용 함수
@@ -230,8 +307,14 @@ private:
 	string sChat;
 	string* RecvChat(stringstream& RecvStream);
 
-	cCharactersInfo NewPlayer;
-	cCharactersInfo* RecvNewPlayer(stringstream& RecvStream);
+	cCharacter	NewPlayer;
+	cCharacter* RecvNewPlayer(stringstream& RecvStream);
+
+	MonsterSet	MonsterSetInfo;
+	MonsterSet* RecvMonsterSet(stringstream& RecvStream);
+
+	Monster		MonsterInfo;
+	Monster*	RecvMonster(stringstream& RecvStream);
 	//////////////////////////////////////////////////////////////////////////
 };
 
