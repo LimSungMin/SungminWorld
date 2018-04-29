@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Spawning")
 	TSubclassOf<class ACharacter> WhoToSpawn;
 
+	UPROPERTY(EditAnywhere, Category = "Spawning")
+	TSubclassOf<class AMonster> MonsterToSpawn;
+
 	// 파괴될 때 파티클
 	UPROPERTY(EditAnywhere, Category = "Spawning")
 	UParticleSystem* DestroyEmiiter;
@@ -60,9 +63,14 @@ public:
 	// 세션아이디에 매칭되는 액터 반환
 	AActor* FindActorBySessionId(TArray<AActor*> ActorArray, const int& SessionId);
 
+	
+
 	// 소켓에게 다른 캐릭터 타격 정보 전달
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void HitCharacter(const int& SessionId, const ASungminWorldCharacter* DamagedCharacter);
+	void HitCharacter(const int& SessionId);
+
+	// 몬스터 타격 정보 전달
+	void HitMonster(const int& MonsterId);
 
 	// 소켓으로부터 월드 정보 수신
 	void RecvWorldInfo(cCharactersInfo * ci);
@@ -71,7 +79,12 @@ public:
 	void RecvChat(const string* chat);		
 
 	// 새 플레이어 업데이트
-	void RecvNewPlayer(cCharactersInfo * NewPlayer);
+	void RecvNewPlayer(cCharacter * NewPlayer);
+
+	// 몬스터 업데이트
+	void RecvMonsterSet(MonsterSet * MonstersInfo);	
+	void RecvSpawnMonster(Monster * MonsterInfo);
+	void RecvDestroyMonster(Monster * MonsterInfo);
 	
 private:
 	ClientSocket * Socket;			// 서버와 접속할 소켓
@@ -91,7 +104,20 @@ private:
 	void UpdateChat();
 	
 	// 새 플레이어 입장
+	int	nPlayers;
 	bool bNewPlayerEntered;
-	cCharactersInfo * NewPlayer;
+	cCharacter * NewPlayer;
 	void UpdateNewPlayer();
+
+	// 몬스터 업데이트
+	MonsterSet * MonsterSetInfo;
+	int nMonsters;
+	void UpdateMonsterSet();
+
+	Monster * MonsterInfo;
+	bool bIsNeedToSpawnMonster;
+	void SpawnMonster();
+	
+	bool bIsNeedToDestroyMonster;
+	void DestroyMonster();
 };

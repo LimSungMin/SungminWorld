@@ -12,6 +12,7 @@
 #include "CommonClass.h"
 #include "DBConnector.h"
 #include "IocpBase.h"
+#include "Monster.h"
 
 using namespace std;
 
@@ -28,13 +29,17 @@ public:
 	MainIocp();
 	virtual ~MainIocp();
 	
+	virtual void StartServer() override;
 	// 작업 스레드 생성
 	virtual bool CreateWorkerThread() override;
 	// 작업 스레드
 	virtual void WorkerThread() override;
-	
 	// 클라이언트에게 송신
 	static void Send(stSOCKETINFO * pSocket);	
+
+	// 몬스터 스레드
+	void CreateMonsterManagementThread();
+	void MonsterManagementThread();
 
 private:
 	static cCharactersInfo	CharactersInfo;	// 접속한 클라이언트의 정보를 저장	
@@ -44,6 +49,8 @@ private:
 	static CRITICAL_SECTION	csPlayers;		// CharactersInfo 임계영역
 
 	FuncProcess fnProcess[100];
+	HANDLE*		MonsterHandle;
+	static MonsterSet	MonstersInfo;
 
 	// 회원가입
 	static void SignUp(stringstream & RecvStream, stSOCKETINFO * pSocket);
@@ -59,11 +66,16 @@ private:
 	static void HitCharacter(stringstream & RecvStream, stSOCKETINFO * pSocket);
 	// 채팅 수신 후 클라이언트들에게 송신
 	static void BroadcastChat(stringstream & RecvStream, stSOCKETINFO * pSocket);
+	// 몬스터 피격 처리
+	static void HitMonster(stringstream & RecvStream, stSOCKETINFO * pSocket);
 
 	// 브로드캐스트 함수
 	static void Broadcast(stringstream & SendStream);	
 	// 다른 클라이언트들에게 새 플레이어 입장 정보 보냄
-	static void BroadcastNewPlayer(cCharactersInfo & player);
+	static void BroadcastNewPlayer(cCharacter & player);
 	// 캐릭터 정보를 버퍼에 기록
-	static void WriteCharactersInfoToSocket(stSOCKETINFO * pSocket);	
+	static void WriteCharactersInfoToSocket(stSOCKETINFO * pSocket);		
+	
+	// 몬스터 정보 초기화
+	void InitializeMonsterSet();
 };
