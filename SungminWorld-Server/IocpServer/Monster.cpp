@@ -63,16 +63,6 @@ bool Monster::IsAttacking()
 	return bIsAttacking;
 }
 
-void Monster::SetMovePoint(float point)
-{
-	MovePoint = point;
-}
-
-void Monster::SetHitPoint(float point)
-{
-	HitPoint = point;
-}
-
 bool Monster::IsPlayerInTraceRange(const cCharacter & target)
 {
 	if (abs(target.X - X) < TraceRange && abs(target.Y - Y) < TraceRange)
@@ -87,16 +77,6 @@ bool Monster::IsPlayerInHitRange(const cCharacter & target)
 		return true;
 
 	return false;
-}
-
-void Monster::SetTraceRange(float range)
-{
-	TraceRange = range;
-}
-
-void Monster::SetHitRange(float range)
-{
-	HitRange = range;
 }
 
 void Monster::SetLocation(float x, float y, float z)

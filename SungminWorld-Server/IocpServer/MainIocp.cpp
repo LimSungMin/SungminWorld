@@ -151,14 +151,25 @@ void MainIocp::CreateMonsterManagementThread()
 
 void MainIocp::MonsterManagementThread()
 {
+	int count = 1;
 	// 몬스터 초기화
+	int id = 1;
 	Monster mTest;
 	mTest.X = -540;
 	mTest.Y = -730;
-	mTest.Z = 130;
+	mTest.Z = 250;
 	mTest.Health = 100.0f;
-	mTest.Id = 1;
-	MonstersInfo.monsters[1] = mTest;
+	mTest.Id = id;
+	mTest.MovePoint = 50.f;
+	MonstersInfo.monsters[id] = mTest;
+
+	/*Monster mTest2;
+	mTest2.X = -540;
+	mTest2.Y = -630;
+	mTest2.Z = 225;
+	mTest2.Health = 100.0f;
+	mTest2.Id = 2;
+	MonstersInfo.monsters[mTest2.Id] = mTest2;*/
 	// 로직 시작
 	while (true)
 	{
@@ -176,7 +187,7 @@ void MainIocp::MonsterManagementThread()
 					continue;
 				}
 
-				if (monster.IsPlayerInTraceRange(player.second))
+				if (monster.IsPlayerInTraceRange(player.second) && !monster.IsAttacking())
 				{
 					monster.MoveTo(player.second);
 					continue;
@@ -190,8 +201,17 @@ void MainIocp::MonsterManagementThread()
 		SendStream << MonstersInfo << endl;
 
 		Broadcast(SendStream);
-
-		Sleep(33);
+		///
+		count++;
+		if (MonstersInfo.monsters.size() <= 5)
+		{
+			id += 50;
+			mTest.Y += id;
+			mTest.Id = id;
+			MonstersInfo.monsters[id] = mTest;
+		}		
+		///
+		Sleep(1000);
 	}
 }
 

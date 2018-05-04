@@ -160,6 +160,7 @@ void ASungminWorldCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector
 
 void ASungminWorldCharacter::HitOtherCharacter()
 {
+	UE_LOG(LogClass, Log, TEXT("Hit!"));
 	if (HitEnable)
 	{
 		HitEnable = false;

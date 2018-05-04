@@ -7,6 +7,8 @@
 #include "ChatWindowWidget.h"
 #include "TimerManager.h"
 #include "Monster.h"
+#include <vector>
+#include <algorithm>
 
 ASungminPlayerController::ASungminPlayerController()
 {
@@ -51,10 +53,10 @@ void ASungminPlayerController::Tick(float DeltaSeconds)
 	if (!bIsConnected) return;
 
 	// 플레이어 정보 송신	
-	SendPlayerInfo();
+	// SendPlayerInfo();
 	UpdateMonstersInfo();
 	// 월드 동기화
-	if (!UpdateWorldInfo()) return;
+	UpdateWorldInfo();
 
 	// 채팅 동기화
 	if (bIsChatNeedUpdate)
@@ -116,7 +118,7 @@ void ASungminPlayerController::BeginPlay()
 	UE_LOG(LogClass, Log, TEXT("BeginPlay End"));
 
 	// 플레이어 동기화 시작
-	// GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, this, &ASungminPlayerController::SendPlayerInfo, 0.03f, true);
+	GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, this, &ASungminPlayerController::SendPlayerInfo, 0.03f, true);
 }
 
 void ASungminPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -176,7 +178,7 @@ void ASungminPlayerController::RecvNewPlayer(cCharactersInfo * NewPlayer_)
 	}
 }
 
-void ASungminPlayerController::RecvMonsterSet(MonsterSet * MonstersInfo_)
+void ASungminPlayerController::SyncMonsters(MonsterSet * MonstersInfo_)
 {
 	if (MonstersInfo_ != nullptr)
 	{
@@ -186,7 +188,7 @@ void ASungminPlayerController::RecvMonsterSet(MonsterSet * MonstersInfo_)
 
 void ASungminPlayerController::SendPlayerInfo()
 {
-	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
 	if (!Player)
 		return;
 
@@ -194,7 +196,6 @@ void ASungminPlayerController::SendPlayerInfo()
 	const auto & Location = Player->GetActorLocation();
 	const auto & Rotation = Player->GetActorRotation();
 	const auto & Velocity = Player->GetVelocity();
-	const bool IsFalling = Player->IsFalling();
 
 	cCharacter Character;
 	Character.SessionId = SessionId;
@@ -302,7 +303,12 @@ bool ASungminPlayerController::UpdateWorldInfo()
 void ASungminPlayerController::UpdatePlayerInfo(const cCharacter & info)
 {
 	auto Player = Cast<ASungminWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	if (!Player)
+		return;
+
 	UWorld* const world = GetWorld();
+	if (!world)
+		return;
 
 	if (!info.IsAlive)
 	{
@@ -405,6 +411,7 @@ void ASungminPlayerController::UpdateMonstersInfo()
 
 	TArray<AActor*> SpawnedMonsters;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AMonster::StaticClass(), SpawnedMonsters);
+	// UE_LOG(LogClass, Log, TEXT("몬스터 %d 마리"), SpawnedMonsters.Num());
 
 	if (nMonster == -1)
 	{
@@ -427,12 +434,95 @@ void ASungminPlayerController::UpdateMonstersInfo()
 			AMonster* SpawnMonster = world->SpawnActor<AMonster>(MonsterToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 			SpawnMonster->SpawnDefaultController();
 			SpawnMonster->Id = monster->Id;
-			SpawnMonster->Health = monster->Health;
+			SpawnMonster->Health = monster->Health;			
 		}
 	}
 	else if (nMonster != MonstersInfo->monsters.size())
 	{
+		/*
+		// 몬스터 제거
+		if (nMonster > MonstersInfo->monsters.size())
+		{
+			vector<int> LocalMonstersId;
+			for (auto LocalActor : SpawnedMonsters)
+			{
+				AMonster * LocalMonster = Cast<AMonster>(LocalActor);
+				if (LocalMonster)
+				{
+					LocalMonstersId.push_back(LocalMonster->Id);
+				}
+			}
 
+			for (auto ServerMonster : MonstersInfo->monsters)
+			{
+				LocalMonstersId.erase(std::remove(LocalMonstersId.begin(), LocalMonstersId.end(), ServerMonster.second.Id), LocalMonstersId.end());
+			}
+
+			for (auto LocalActor : SpawnedMonsters)
+			{
+				AMonster * LocalMonster = Cast<AMonster>(LocalActor);
+				if (LocalMonster)
+				{
+					for (const int& DestroyId : LocalMonstersId)
+					{
+						if (LocalMonster->Id == DestroyId)
+						{
+							UE_LOG(LogClass, Log, TEXT("monster destroyed"));
+							LocalMonster->Destroy();
+						}
+					}
+				}
+			}
+
+			nMonster = MonstersInfo->monsters.size();
+		}
+		// 몬스터 추가
+		else
+		{
+			vector<int> LocalMonstersId;
+
+			for (auto ServerMonster : MonstersInfo->monsters)
+			{
+				LocalMonstersId.push_back(ServerMonster.second.Id);
+			}
+
+			for (auto LocalActor : SpawnedMonsters)
+			{
+				AMonster * LocalMonster = Cast<AMonster>(LocalActor);
+				if (LocalMonster)
+				{
+					LocalMonstersId.erase(std::remove(LocalMonstersId.begin(), LocalMonstersId.end(), LocalMonster->Id), LocalMonstersId.end());
+				}
+			}
+
+			for (const int& SpawnId : LocalMonstersId)
+			{
+				const Monster * monster = &MonstersInfo->monsters[SpawnId];
+				FVector SpawnLocation;
+				SpawnLocation.X = monster->X;
+				SpawnLocation.Y = monster->Y;
+				SpawnLocation.Z = monster->Z;
+
+				FRotator SpawnRotation(0, 0, 0);
+
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = this;
+				SpawnParams.Instigator = Instigator;
+				SpawnParams.Name = FName(*FString(to_string(monster->Id).c_str()));
+
+				AMonster* SpawnMonster = world->SpawnActor<AMonster>(MonsterToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+				if (SpawnMonster)
+				{
+					SpawnMonster->SpawnDefaultController();
+					SpawnMonster->Id = monster->Id;
+					SpawnMonster->Health = monster->Health;
+				}
+				
+			}
+
+			nMonster = MonstersInfo->monsters.size();
+		}
+		*/
 	}
 	else
 	{
@@ -448,9 +538,12 @@ void ASungminPlayerController::UpdateMonstersInfo()
 				Location.Y = MonsterInfo->Y;
 				Location.Z = MonsterInfo->Z;
 
-				monster->AddMovementInput(Location);
-				monster->SetActorLocation(Location);				
-			}						
+				FVector v(1.0f, 0, 0);
+
+				// monster->AddMovementInput(v);
+				// monster->SetActorLocation(Location);
+				monster->MoveToLocation(Location);
+			}
 		}
 	}
 }

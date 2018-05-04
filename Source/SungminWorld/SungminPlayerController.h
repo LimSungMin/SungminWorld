@@ -78,7 +78,7 @@ public:
 	// 새 플레이어 업데이트
 	void RecvNewPlayer(cCharactersInfo * NewPlayer);
 
-	void RecvMonsterSet(MonsterSet * MonstersInfo);
+	void SyncMonsters(MonsterSet * MonstersInfo);	
 	
 private:
 	ClientSocket * Socket;			// 서버와 접속할 소켓

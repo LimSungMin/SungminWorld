@@ -204,7 +204,7 @@ cCharactersInfo * ClientSocket::RecvNewPlayer(stringstream & RecvStream)
 }
 
 MonsterSet * ClientSocket::RecvMonsterSet(stringstream & RecvStream)
-{
+{	
 	RecvStream >> MonstersInfo;
 	return &MonstersInfo;
 }
@@ -330,7 +330,17 @@ uint32 ClientSocket::Run()
 			break;
 			case EPacketType::SYNC_MONSTER:
 			{
-				PlayerController->RecvMonsterSet(RecvMonsterSet(RecvStream));
+				PlayerController->SyncMonsters(RecvMonsterSet(RecvStream));
+			}
+			break;
+			case EPacketType::SPAWN_MONSTER:
+			{
+
+			}
+			break;
+			case EPacketType::DESTROY_MONSTER:
+			{
+
 			}
 			break;
 			default:

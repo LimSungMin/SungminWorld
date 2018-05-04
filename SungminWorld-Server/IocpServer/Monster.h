@@ -17,19 +17,11 @@ public:
 	// 살아있는지 여부
 	bool IsAlive();
 	// 공격중인지 여부
-	bool IsAttacking();
-	// 한번에 얼마나 이동시킬지 설정
-	void SetMovePoint(float point);
-	// 한번에 얼마나 때릴지 설정
-	void SetHitPoint(float point);
+	bool IsAttacking();	
 	// 플레이어가 추격 범위에 있는지
 	bool IsPlayerInTraceRange(const cCharacter& target);
 	// 플레이어가 타격 범위에 있는지
-	bool IsPlayerInHitRange(const cCharacter& target);
-	// 추격 범위 설정
-	void SetTraceRange(float range);
-	// 타격 범위 설정
-	void SetHitRange(float range);	
+	bool IsPlayerInHitRange(const cCharacter& target);	
 	// 위치 설정
 	void SetLocation(float x, float y, float z);
 
@@ -60,14 +52,14 @@ public:
 	float	Z;				// Z좌표
 	float	Health;			// 체력
 	int		Id;				// 고유 id
-
-private:	
-	float	MovePoint;		// 이동 포인트
-	float	HitPoint;		// 타격 포인트
-	bool	bIsAttacking;	// 공격중인지
-	bool	bIsTracking;	// 추격중인지
 	float	TraceRange;		// 추격 범위
 	float	HitRange;		// 타격 범위
+	float	MovePoint;		// 이동 포인트
+	float	HitPoint;		// 타격 포인트
+
+private:			
+	bool	bIsAttacking;	// 공격중인지
+	bool	bIsTracking;	// 추격중인지	
 };
 
 class MonsterSet
