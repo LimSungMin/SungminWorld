@@ -50,9 +50,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Properties")
 	float GetHealth();
 
-	UFUNCTION(BlueprintPure, Category = "Properties")
-	bool IsAlive();
-
 	bool IsFalling();	
 
 	// 피격 애니메이션
@@ -68,11 +65,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetAttacking(bool attack);
-
-	bool IsAttacking();	
-
-	// 플레이어 고유 아이디
-	int		SessionId;
+		
+	int		SessionId;		// 플레이어 고유 아이디
+	bool	IsAlive;		// 살아있는지
+	bool	IsAttacking;	// 공격중인지
 
 protected:
 
@@ -108,10 +104,7 @@ protected:
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	// End of APawn interface
-
-	bool	bIsAlive;
-	bool	bIsAttacking;
+	// End of APawn interface	
 
 	FTimerHandle HitTimerHandle;	
 	bool HitEnable;

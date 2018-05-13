@@ -57,7 +57,7 @@ void ASungminPlayerController::Tick(float DeltaSeconds)
 	if (!bIsConnected) return;
 
 	// FIXME
-	SendPlayerInfo();
+	// SendPlayerInfo();
 
 	// 새로운 플레이어 입장
 	if (bNewPlayerEntered)
@@ -114,9 +114,9 @@ void ASungminPlayerController::BeginPlay()
 	Character.VY = 0;
 	Character.VZ = 0;
 	// 속성
-	Character.IsAlive = Player->IsAlive();
+	Character.IsAlive = Player->IsAlive;
 	Character.HealthValue = Player->HealthValue;
-	Character.IsAttacking = Player->IsAttacking();
+	Character.IsAttacking = Player->IsAttacking;
 
 	Socket->EnrollPlayer(Character);
 
@@ -126,7 +126,8 @@ void ASungminPlayerController::BeginPlay()
 
 	// FIXME 
 	// 플레이어 동기화 시작	
-	// GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, this, &ASungminPlayerController::SendPlayerInfo, 0.016f, true);
+	GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, this, &ASungminPlayerController::SendPlayerInfo, 0.016f, true);
+	//GetWorldTimerManager().SetTimer(SendPlayerInfoHandle, &SendPlayerInfo, 0.016f, true);
 }
 
 void ASungminPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -165,7 +166,7 @@ void ASungminPlayerController::RecvWorldInfo(cCharactersInfo * ci_)
 {
 	if (ci_ != nullptr)
 	{
-		ci = ci_;
+		CharactersInfo = ci_;
 	}
 
 }
@@ -240,9 +241,9 @@ void ASungminPlayerController::SendPlayerInfo()
 	Character.VY = Velocity.Y;
 	Character.VZ = Velocity.Z;
 
-	Character.IsAlive = Player->IsAlive();
+	Character.IsAlive = Player->IsAlive;
 	Character.HealthValue = Player->HealthValue;
-	Character.IsAttacking = Player->IsAttacking();
+	Character.IsAttacking = Player->IsAttacking;
 
 	Socket->SendPlayer(Character);
 }
@@ -253,11 +254,11 @@ bool ASungminPlayerController::UpdateWorldInfo()
 	if (world == nullptr)
 		return false;
 
-	if (ci == nullptr)
+	if (CharactersInfo == nullptr)
 		return false;
 
 	// 플레이어 업데이트
-	UpdatePlayerInfo(ci->players[SessionId]);
+	UpdatePlayerInfo(CharactersInfo->players[SessionId]);
 
 	// 다른 플레이어 업데이트
 	TArray<AActor*> SpawnedCharacters;
@@ -265,9 +266,9 @@ bool ASungminPlayerController::UpdateWorldInfo()
 
 	if (nPlayers == -1)
 	{	
-		for (auto & player : ci->players)
-		{
-			if (player.first == SessionId)
+		for (auto & player : CharactersInfo->players)
+		{			
+			if (player.first == SessionId || !player.second.IsAlive)
 				continue;
 
 			FVector SpawnLocation;
@@ -287,10 +288,14 @@ bool ASungminPlayerController::UpdateWorldInfo()
 
 			ASungminWorldCharacter* SpawnCharacter = world->SpawnActor<ASungminWorldCharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 			SpawnCharacter->SpawnDefaultController();
+
 			SpawnCharacter->SessionId = player.second.SessionId;
+			SpawnCharacter->HealthValue = player.second.HealthValue;
+			SpawnCharacter->IsAlive = player.second.IsAlive;
+			SpawnCharacter->IsAttacking = player.second.IsAttacking;	
 		}
 
-		nPlayers = ci->players.size();
+		nPlayers = CharactersInfo->players.size();
 	} 
 	else
 	{
@@ -303,7 +308,7 @@ bool ASungminPlayerController::UpdateWorldInfo()
 				continue;
 			}
 
-			cCharacter * info = &ci->players[OtherPlayer->SessionId];
+			cCharacter * info = &CharactersInfo->players[OtherPlayer->SessionId];
 
 			if (info->IsAlive)
 			{
@@ -424,6 +429,7 @@ void ASungminPlayerController::UpdateNewPlayer()
 {
 	UWorld* const world = GetWorld();
 
+	// 새로운 플레이어가 자기 자신이면 무시
 	if (NewPlayer->SessionId == SessionId)
 	{
 		bNewPlayerEntered = false;
@@ -431,6 +437,7 @@ void ASungminPlayerController::UpdateNewPlayer()
 		return;
 	}
 		
+	// 새로운 플레이어를 필드에 스폰
 	FVector SpawnLocation;
 	SpawnLocation.X = NewPlayer->X;
 	SpawnLocation.Y = NewPlayer->Y;
@@ -449,49 +456,34 @@ void ASungminPlayerController::UpdateNewPlayer()
 	ASungminWorldCharacter* SpawnCharacter = world->SpawnActor<ASungminWorldCharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 	SpawnCharacter->SpawnDefaultController();
 	SpawnCharacter->SessionId = NewPlayer->SessionId;
+	SpawnCharacter->HealthValue = NewPlayer->HealthValue;
+
+	// 필드의 플레이어 정보에 추가
+	if (CharactersInfo != nullptr)
+	{
+		cCharacter player;
+		player.SessionId = NewPlayer->SessionId;
+		player.X = NewPlayer->X;
+		player.Y = NewPlayer->Y;
+		player.Z = NewPlayer->Z;
+
+		player.Yaw = NewPlayer->Yaw;
+		player.Pitch = NewPlayer->Pitch;
+		player.Roll = NewPlayer->Roll;
+
+		player.VX = NewPlayer->VX;
+		player.VY = NewPlayer->VY;
+		player.VZ = NewPlayer->VZ;
+
+		player.IsAlive = NewPlayer->IsAlive;
+		player.HealthValue = NewPlayer->HealthValue;
+		player.IsAttacking = NewPlayer->IsAttacking;
+
+		CharactersInfo->players[NewPlayer->SessionId] = player;
+	}
 
 	UE_LOG(LogClass, Log, TEXT("other player spawned."));
 
-	/*
-	// 월드 내 OtherNetworkCharacter 불러옴
-	TArray<AActor*> SpawnedCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASungminWorldCharacter::StaticClass(), SpawnedCharacters);
-
-	for (const auto& kvp : NewPlayer->players)
-	{
-		if (kvp.first == SessionId)
-			continue;
-
-		const cCharacter * player = &kvp.second;
-		if (player->IsAlive)
-		{
-			auto Actor = FindActorBySessionId(SpawnedCharacters, player->SessionId);
-			if (Actor == nullptr)
-			{
-				FVector SpawnLocation;
-				SpawnLocation.X = player->X;
-				SpawnLocation.Y = player->Y;
-				SpawnLocation.Z = player->Z;
-
-				FRotator SpawnRotation;
-				SpawnRotation.Yaw = player->Yaw;
-				SpawnRotation.Pitch = player->Pitch;
-				SpawnRotation.Roll = player->Roll;
-
-				FActorSpawnParameters SpawnParams;
-				SpawnParams.Owner = this;
-				SpawnParams.Instigator = Instigator;
-				SpawnParams.Name = FName(*FString(to_string(player->SessionId).c_str()));
-
-				ASungminWorldCharacter* SpawnCharacter = world->SpawnActor<ASungminWorldCharacter>(WhoToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
-				SpawnCharacter->SpawnDefaultController();
-				SpawnCharacter->SessionId = player->SessionId;
-
-				UE_LOG(LogClass, Log, TEXT("other player spawned."));
-			}
-		}
-	}
-	*/
 	bNewPlayerEntered = false;
 	NewPlayer = nullptr;
 }
@@ -533,7 +525,6 @@ void ASungminPlayerController::UpdateMonsterSet()
 					SpawnMonster->Id = monster->Id;
 					SpawnMonster->Health = monster->Health;
 				}
-
 			}
 		}
 		else

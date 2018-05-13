@@ -56,8 +56,8 @@ ASungminWorldCharacter::ASungminWorldCharacter()
 	EnergyValue = 0.5f;
 	MoodValue = 0.5f;
 
-	bIsAlive = true;
-	bIsAttacking = false;	
+	IsAlive = true;
+	IsAttacking = false;	
 	SessionId = -1;	
 	HitEnable = true;
 }
@@ -114,11 +114,6 @@ float ASungminWorldCharacter::GetHealth()
 	return HealthValue;
 }
 
-bool ASungminWorldCharacter::IsAlive()
-{
-	return bIsAlive;
-}
-
 bool ASungminWorldCharacter::IsFalling()
 {
 	return GetCharacterMovement()->IsFalling();
@@ -126,12 +121,7 @@ bool ASungminWorldCharacter::IsFalling()
 
 void ASungminWorldCharacter::SetAttacking(bool attack)
 {
-	bIsAttacking = attack;
-}
-
-bool ASungminWorldCharacter::IsAttacking()
-{
-	return bIsAttacking;
+	IsAttacking = attack;
 }
 
 void ASungminWorldCharacter::OnResetVR()

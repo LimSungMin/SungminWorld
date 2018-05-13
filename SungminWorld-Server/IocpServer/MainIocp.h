@@ -48,9 +48,9 @@ private:
 	static DBConnector 		Conn;			// DB 커넥터
 	static CRITICAL_SECTION	csPlayers;		// CharactersInfo 임계영역
 
-	FuncProcess fnProcess[100];
-	HANDLE*		MonsterHandle;
-	static MonsterSet	MonstersInfo;
+	FuncProcess				fnProcess[100];	// 패킷 처리 구조체
+	HANDLE*					MonsterHandle;	// 몬스터 스레드 핸들러
+	static MonsterSet		MonstersInfo;	// 몬스터 집합 정보
 
 	// 회원가입
 	static void SignUp(stringstream & RecvStream, stSOCKETINFO * pSocket);

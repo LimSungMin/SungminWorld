@@ -28,21 +28,16 @@ bool ClientSocket::InitSocket()
 	WSADATA wsaData;
 	// 윈속 버전을 2.2로 초기화
 	int nRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (nRet != 0) {
-		// std::cout << "Error : " << WSAGetLastError() << std::endl;		
+	if (nRet != 0) {		
 		return false;
 	}
 
-	// TCP 소켓 생성
-	// m_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ServerSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	// UdpServerSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
-	if (ServerSocket == INVALID_SOCKET) {
-		// std::cout << "Error : " << WSAGetLastError() << std::endl;
+	// TCP 소켓 생성	
+	ServerSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);	
+	if (ServerSocket == INVALID_SOCKET) {		
 		return false;
 	}
-
-	// std::cout << "socket initialize success." << std::endl;
+	
 	return true;
 }
 
@@ -55,19 +50,11 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 	// 접속할 서버 포트 및 IP
 	stServerAddr.sin_port = htons(nPort);
 	stServerAddr.sin_addr.s_addr = inet_addr(pszIP);
-	
-// 	UdpServerAddr.sin_family = AF_INET;
-// 	// 접속할 서버 포트 및 IP
-// 	UdpServerAddr.sin_port = htons(UDP_SERVER_PORT);
-// 	UdpServerAddr.sin_addr.s_addr = inet_addr(pszIP);
 
 	int nRet = connect(ServerSocket, (sockaddr*)&stServerAddr, sizeof(sockaddr));	
-	if (nRet == SOCKET_ERROR) {
-		// std::cout << "Error : " << WSAGetLastError() << std::endl;
+	if (nRet == SOCKET_ERROR) {		
 		return false;
-	}
-
-	// std::cout << "Connection success..." << std::endl;
+	}	
 
 	return true;
 }
@@ -75,7 +62,7 @@ bool ClientSocket::Connect(const char * pszIP, int nPort)
 bool ClientSocket::SignUp(const FText & Id, const FText & Pw)
 {
 	stringstream SendStream;
-
+	// 회원가입 정보를 서버에 보낸다
 	SendStream << EPacketType::SIGNUP << endl;
 	SendStream << TCHAR_TO_UTF8(*Id.ToString()) << endl;
 	SendStream << TCHAR_TO_UTF8(*Pw.ToString()) << endl;
@@ -87,6 +74,7 @@ bool ClientSocket::SignUp(const FText & Id, const FText & Pw)
 	if (nSendLen == -1)
 		return false;
 
+	// 서버로부터 응답 대기
 	int nRecvLen = recv(
 		ServerSocket, (CHAR*)&recvBuffer, MAX_BUFFER, 0
 	);
@@ -105,13 +93,14 @@ bool ClientSocket::SignUp(const FText & Id, const FText & Pw)
 	if (PacketType != EPacketType::SIGNUP)
 		return false;
 
+	// 회원가입 성공 유무를 반환
 	return SignUpResult;
 }
 
 bool ClientSocket::Login(const FText & Id, const FText & Pw)
 {
 	stringstream SendStream;
-
+	// 로그인 정보를 서버에 보낸다
 	SendStream << EPacketType::LOGIN << endl;
 	SendStream << TCHAR_TO_UTF8(*Id.ToString()) << endl;
 	SendStream << TCHAR_TO_UTF8(*Pw.ToString()) << endl;
@@ -122,7 +111,7 @@ bool ClientSocket::Login(const FText & Id, const FText & Pw)
 
 	if (nSendLen == -1)
 		return false;
-
+	// 서버로부터 응답 대기
 	int nRecvLen = recv(
 		ServerSocket, (CHAR*)&recvBuffer, MAX_BUFFER, 0
 	);
@@ -140,7 +129,7 @@ bool ClientSocket::Login(const FText & Id, const FText & Pw)
 
 	if (PacketType != EPacketType::LOGIN)
 		return false;
-
+	// 로그인 성공 유무를 반환
 	return LoginResult;
 }
 
@@ -184,14 +173,14 @@ void ClientSocket::SendPlayer(cCharacter& info)
 
 cCharactersInfo * ClientSocket::RecvCharacterInfo(stringstream & RecvStream)
 {	
-	// 서버에서 캐릭터 정보를 얻어 반환		
+	// 캐릭터 정보를 얻어 반환		
 	RecvStream >> CharactersInfo;
 	return &CharactersInfo;		
 }
 
 string * ClientSocket::RecvChat(stringstream & RecvStream)
 {	
-	// 서버에서 채팅 정보를 얻어 반환
+	// 채팅 정보를 얻어 반환
 	RecvStream >> sChat;
 	std::replace(sChat.begin(), sChat.end(), '_', ' ');
 	return &sChat;
@@ -199,18 +188,21 @@ string * ClientSocket::RecvChat(stringstream & RecvStream)
 
 cCharacter * ClientSocket::RecvNewPlayer(stringstream & RecvStream)
 {
+	// 새 플레이어 정보를 얻어 반환
 	RecvStream >> NewPlayer;
 	return &NewPlayer;
 }
 
 MonsterSet * ClientSocket::RecvMonsterSet(stringstream & RecvStream)
 {	
+	// 몬스터 집합 정보를 얻어 반환
 	RecvStream >> MonsterSetInfo;
 	return &MonsterSetInfo;
 }
 
 Monster * ClientSocket::RecvMonster(stringstream & RecvStream)
 {
+	// 단일 몬스터 정보를 얻어 반환
 	RecvStream >> MonsterInfo;
 	return &MonsterInfo;
 }
@@ -233,25 +225,6 @@ void ClientSocket::LogoutPlayer(const int& SessionId)
 	
 	closesocket(ServerSocket);
 	WSACleanup();
-}
-
-char* ClientSocket::UdpTest()
-{
-	int nResult;
-	char * sendBuffer = (char*)"hello";
-	int sendBufferLen = strlen(sendBuffer);
-	
-	SOCKADDR_IN fromAddr;
-	int fromAddrLen = sizeof(fromAddr);
-	nResult = sendto(
-		UdpServerSocket, sendBuffer, sendBufferLen, 0, (sockaddr*)&UdpServerAddr, sizeof(UdpServerAddr)
-	);
-
-	nResult = recvfrom(
-		UdpServerSocket, UdpRecvBuffer, MAX_BUFFER, 0, (sockaddr*)&fromAddr, &fromAddrLen
-	);
-
-	return UdpRecvBuffer;
 }
 
 void ClientSocket::HitPlayer(const int& SessionId)
@@ -326,6 +299,7 @@ uint32 ClientSocket::Run()
 		);
 		if (nRecvLen > 0)
 		{
+			// 패킷 처리
 			RecvStream << recvBuffer;
 			RecvStream >> PacketType;
 

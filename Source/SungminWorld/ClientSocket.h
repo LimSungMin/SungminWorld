@@ -17,10 +17,10 @@ using namespace std;
 
 #define	MAX_BUFFER		4096
 #define SERVER_PORT		8000
-#define UDP_SERVER_PORT	8001
 #define SERVER_IP		"127.0.0.1"
 #define MAX_CLIENTS		100
 
+// 소켓 통신 구조체
 struct stSOCKETINFO
 {
 	WSAOVERLAPPED	overlapped;
@@ -31,6 +31,26 @@ struct stSOCKETINFO
 	int				sendBytes;
 };
 
+// 패킷 정보
+enum EPacketType
+{
+	LOGIN,
+	ENROLL_PLAYER,
+	SEND_PLAYER,
+	RECV_PLAYER,
+	LOGOUT_PLAYER,
+	HIT_PLAYER,
+	DAMAGED_PLAYER,
+	CHAT,
+	ENTER_NEW_PLAYER,
+	SIGNUP,
+	HIT_MONSTER,
+	SYNC_MONSTER,
+	SPAWN_MONSTER,
+	DESTROY_MONSTER
+};
+
+// 플레이어 정보
 class cCharacter {
 public:
 	cCharacter() {};
@@ -94,24 +114,7 @@ public:
 	}
 };
 
-enum EPacketType
-{
-	LOGIN,
-	ENROLL_PLAYER,
-	SEND_PLAYER,
-	RECV_PLAYER,
-	LOGOUT_PLAYER,
-	HIT_PLAYER,
-	DAMAGED_PLAYER,
-	CHAT,
-	ENTER_NEW_PLAYER,
-	SIGNUP,
-	HIT_MONSTER,
-	SYNC_MONSTER,
-	SPAWN_MONSTER,
-	DESTROY_MONSTER
-};
-
+// 플레이어 직렬화/역직렬화 클래스
 class cCharactersInfo
 {
 public:
@@ -151,6 +154,7 @@ public:
 	}
 };
 
+// 몬스터 정보
 class Monster
 {
 public:
@@ -186,6 +190,7 @@ public:
 	}
 };
 
+// 몬스터 직렬화/역직렬화 클래스
 class MonsterSet
 {
 public:
@@ -223,7 +228,7 @@ public:
 };
 
 /**
- * 
+ * 서버와 접속 및 패킷 처리를 담당하는 클래스
  */
 class SUNGMINWORLD_API ClientSocket : public FRunnable
 {
@@ -255,9 +260,7 @@ public:
 	// 몬스터 피격 처리
 	void HitMonster(const int& MonsterId);
 	// 채팅 
-	void SendChat(const int& SessionId, const string& Chat);
-	// UDP 테스트용 함수
-	char* UdpTest();
+	void SendChat(const int& SessionId, const string& Chat);	
 	//////////////////////////////////////////////////////////////////////////	
 
 	// 플레이어 컨트롤러 세팅
@@ -287,16 +290,10 @@ public:
 	}
 
 private:
-	SOCKET	ServerSocket;				// 서버와 연결할 소켓
-	SOCKET	UdpServerSocket;
+	SOCKET	ServerSocket;				// 서버와 연결할 소켓	
 	char 	recvBuffer[MAX_BUFFER];		// 수신 버퍼 스트림	
-	char UdpRecvBuffer[MAX_BUFFER];
 	
-	SOCKADDR_IN	UdpServerAddr;	
-	ASungminPlayerController* PlayerController;	// 플레이어 컨트롤러 정보
-
-	
-	char testChat[MAX_BUFFER];
+	ASungminPlayerController* PlayerController;	// 플레이어 컨트롤러 정보	
 
 	//////////////////////////////////////////////////////////////////////////
 	// 역직렬화
