@@ -16,6 +16,8 @@ Sungmin World 에 오신걸 환영합니다. 본 프로젝트는 게임회사 �
 [![클릭시 이동](https://img.youtube.com/vi/H_Lc5JI-OZo/0.jpg)](https://www.youtube.com/watch?v=H_Lc5JI-OZo)
 [(클릭시 이동)](https://www.youtube.com/watch?v=H_Lc5JI-OZo&t=28s)
 
+- 프레젠테이션 : https://drive.google.com/open?id=10z-_fcLaKOzjhH2r8aqQcF4AduyBq0Hh
+
 ## 서버 클래스 
 
 |  class | description  |   
